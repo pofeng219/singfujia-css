@@ -1,0 +1,1635 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>幸福家不動產 - 物件現況調查系統 (手動存取版)</title>
+    
+    <!-- External Libraries -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@400;500;700;900&display=swap');
+        
+        html, body {
+            height: 100%;
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+        }
+
+        body {
+            font-family: 'Noto Sans TC', sans-serif;
+            background-color: #f8fafc;
+            overscroll-behavior-y: none;
+            width: 100%;
+        }
+
+        #root {
+            height: 100%;
+            overflow: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* A4 頁面樣式 */
+        .a4-page {
+            width: 210mm;
+            min-width: 210mm; 
+            min-height: 297mm;
+            height: auto;
+            padding: 10mm 10mm; 
+            background: white;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
+            position: relative;
+            box-sizing: border-box;
+            color: #000;
+            -webkit-font-smoothing: antialiased;
+            overflow: visible;
+            flex-shrink: 0;
+            margin: 0 auto;
+            display: flex;      
+            flex-direction: column; 
+            justify-content: flex-start;
+            transform-origin: top center;
+            transition: transform 0.3s ease;
+        }
+
+        .preview-wrapper-box {
+            display: flex;
+            justify-content: center;
+            width: 100%;
+            overflow: visible;
+        }
+
+        .a4-page .warning-box {
+            display: none;
+        }
+
+        /* 表格樣式 */
+        .excel-table {
+            border: 2px solid #000;
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 18px;
+            line-height: 1.5;
+            position: relative;
+            z-index: 10;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+        .excel-table td, .excel-table th {
+            border: 1px solid #000;
+            padding: 6px 8px;
+            vertical-align: middle;
+            word-break: break-word; 
+            white-space: normal; 
+        }
+        .align-top-cell {
+            vertical-align: top !important;
+            padding-top: 10px !important;
+            text-align: left !important;
+        }
+        .bg-gray-label {
+            background-color: #e5e7eb;
+            font-weight: 900;
+            text-align: center;
+            vertical-align: middle !important;
+            font-size: 20px;
+        }
+
+        .warning-box {
+            color: #dc2626;
+            font-size: 16px;
+            font-weight: 700;
+            margin: 4px 0;
+            display: inline-block;
+            line-height: 1.4;
+            text-align: center;
+            width: 100%;
+        }
+
+        .no-print { display: block; }
+        
+        @media print {
+            .no-print { display: none; }
+            .a4-page { box-shadow: none; margin: 0; page-break-after: always; transform: none !important; }
+        }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 10px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+        
+        .full-width-input {
+            width: 100%;
+            border: 2px solid #cbd5e1;
+            border-radius: 0.5rem;
+            padding: 0.8rem;
+            font-size: 1.5rem; 
+            outline: none;
+            transition: all 0.2s;
+            margin-top: 0.25rem;
+            color: #334155;
+            background: #fff;
+            font-weight: 500;
+        }
+        .full-width-input:focus {
+            border-color: #0ea5e9;
+            box-shadow: 0 0 0 3px rgba(14, 165, 233, 0.2);
+        }
+        
+        ::placeholder { color: #94a3b8; opacity: 1; }
+        .disabled-section { opacity: 0.5; pointer-events: none; filter: grayscale(100%); }
+
+        .preview-checkbox-wrapper {
+            display: inline-flex;
+            align-items: center;
+            vertical-align: middle;
+            margin-right: 14px;
+            line-height: 1.3;
+            margin-bottom: 6px;
+        }
+        
+        .preview-checkbox-box {
+            width: 24px;
+            height: 24px;
+            border: 3px solid #000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+            margin-right: 8px;
+            flex-shrink: 0;
+            background-color: white;
+            padding-bottom: 2px;
+            font-weight: 900;
+            color: #000;
+        }
+        .preview-checkbox-box.checked {
+            background-color: #000;
+            color: #fff;
+        }
+        
+        .preview-label {
+            display: inline-block;
+            vertical-align: middle;
+            padding-top: 2px;
+            font-weight: 700;
+            font-size: 18px;
+        }
+
+        .preview-scroll-container {
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            justify-content: flex-start;
+            padding: 20px;
+            flex-direction: column;
+            align-items: center;
+        }
+        @media (min-width: 1024px) {
+            .preview-scroll-container {
+                justify-content: center;
+                padding-top: 40px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        const getCurrentDate = () => {
+            const now = new Date();
+            const year = now.getFullYear();
+            const month = String(now.getMonth() + 1).padStart(2, '0');
+            const day = String(now.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
+        };
+
+        const getFormattedTime = () => {
+            const now = new Date();
+            const yyyy = now.getFullYear();
+            const mm = String(now.getMonth() + 1).padStart(2, '0');
+            const dd = String(now.getDate()).padStart(2, '0');
+            const hh = String(now.getHours()).padStart(2, '0');
+            const min = String(now.getMinutes()).padStart(2, '0');
+            return `${yyyy}/${mm}/${dd} ${hh}:${min}`;
+        };
+
+        // 安全的 localStorage 存取助手
+        const safeStorage = {
+            getItem: (key) => {
+                try {
+                    return localStorage.getItem(key);
+                } catch (e) {
+                    console.warn("Storage access denied/unavailable", e);
+                    return null;
+                }
+            },
+            setItem: (key, value) => {
+                try {
+                    localStorage.setItem(key, value);
+                    return true;
+                } catch (e) {
+                    console.warn("Storage write denied/unavailable", e);
+                    return false;
+                }
+            },
+            removeItem: (key) => {
+                try {
+                    localStorage.removeItem(key);
+                    return true;
+                } catch (e) {
+                    console.warn("Storage remove denied/unavailable", e);
+                    return false;
+                }
+            }
+        };
+
+        const INITIAL_STATE = {
+            // Basic Info
+            caseName: '', storeName: '', agentName: '', address: '', 
+            fillDate: getCurrentDate(),
+            version: '1150101版',
+            access: '可進入', accessType: [], accessOther: '', 
+            
+            // House Variables
+            q1_hasExt: '', q1_items: [], q1_basementPartition: false, q1_hasOther: false, q1_other: '',        
+            q2_hasOccupancy: '', q2_desc: '', 
+            q3_hasLeak: '', q3_locations: [], q3_hasOther: false, q3_other: '', q3_ceilingWrapped: false, q3_suspected: false, q3_suspectedDesc: '',
+            q4_hasIssue: '', q4_items: [], q4_hasOther: false, q4_otherDesc: '', q4_suspected: false, q4_suspectedDesc: '', q4_ceilingWrapped: false,
+            q5_hasTilt: '', q5_desc: '', q5_suspectedDesc: '',
+            q6_hasIssue: '', q6_desc: '',
+            q7_hasIssue: '', q7_items: [], q7_hasOther: false, q7_otherDesc: '',
+            q8_stairIssue: '', q8_stairDesc: '',
+            q9_hasIssue: '', q9_items: [], q9_hasOther: false, q9_otherDesc: '',
+            publicFacilities: '', publicFacilitiesReason: '',
+            q10_noParking: false,
+            q10_parkTypes: [], q10_rampMechLoc: '', q10_liftMechLoc: '', q10_hasParkTypeOther: false, q10_parkTypeOther: '',
+            q10_parkingNumberType: 'number', q10_parkingNumberVal: '',
+            q10_carUsage: [], q10_carLotteryMonth: '', q10_hasCarUsageOther: false, q10_carUsageOther: '',
+            q10_motoUsage: [], q10_hasMotoUsageOther: false, q10_motoUsageOther: '',
+            q10_dimL: '', q10_dimW: '', q10_dimH: '', q10_mechWeight: '', q10_entryHeight: '',
+            q10_charging: '', q10_chargingOther: '',
+            q11_hasIssue: '', q11_items: [], q11_hasOther: false, q11_other: '',
+            q12_hasNote: '', q12_note: '',
+            isNotFirstFloor: false, 
+            q13_occupancy: '', q13_desc: '',
+            q14_access: '', q14_section: '', q14_subSection: '', q14_number: '',
+            q15_occupy: '', q15_section: '', q15_subSection: '', q15_number: '',
+            q16_noFacilities: false, q16_items: [], q16_hasOther: false, q16_other: '',
+            q17_issue: '', q17_desc: '',
+            
+            // Land Variables
+            land_road_smooth: '', land_road_desc: '',
+            land_road_ownership: '', 
+            land_road_material: '', land_road_material_other: '',
+            land_has_ditch: '', land_has_ditch_other: '',
+            land_has_height_diff: '', land_has_height_diff_other: '',
+            land_boundary_markers: '', land_boundary_markers_desc: '',
+            land_boundary_encroached: '', land_boundary_encroached_desc: '',
+            land_boundary_encroaching: '', land_boundary_encroaching_desc: '',
+            land_q1_hasBuilding: '', land_q1_items: [], 
+            land_q1_isLegal: '', 
+            land_q1_unregistered_hasOccupant: false,
+            land_q1_religious_details: [], 
+            land_q1_harvestMonth: '', land_q1_cropsDesc: '', 
+            land_q1_hasOther: false, land_q1_other: '',
+            land_infra_electricity: '', land_infra_electricity_items: [], land_infra_electricity_other: '',
+            land_infra_water: '', land_infra_water_items: [], land_infra_water_other: '',
+            land_q7_issue: '', land_q7_desc: '',
+        };
+
+        const EXT_LIST = ["頂樓增建", "露台增建", "夾層增建", "防火巷增建", "陽台增建", "天井增建", "一樓空地增建", "地下室增建", "陽台外推", "平台外推", "上下樓層內梯"];
+        const LAND_Q1_OPTIONS = ["農作物與植栽", "宗教與殯葬設施", "廢棄物"];
+        const LAND_RELIGIOUS_OPTIONS = ["墳墓", "小廟"];
+        const LEAK_LOCATIONS = ["屋頂", "外牆", "窗框", "冷熱水器", "浴室", "前陽台", "後陽台", "廚房", "臥室", "客廳"];
+        const STRUCTURAL_ISSUES = ["水泥塊剝落", "鋼筋外露", "窗框45度角裂縫", "樑柱或牆壁有明顯環狀龜裂"];
+        const UTILITY_ISSUES = ["無水錶", "無電錶", "無瓦斯掛錶", "無瓦斯管線", "使用桶裝瓦斯"];
+        const FACILITY_OPTIONS = ["變電箱/桶", "基地台", "中繼水箱"];
+        
+        const ACCESS_SUB_OPTIONS = ["出租中", "屋主自住", "空屋須請屋主開門", "尚未搬空", "其他"];
+        const ACCESS_SUB_OPTIONS_LAND = ["有他人建物阻擋出入", "現況被圍起", "需與地主聯繫才能入內", "其他"];
+
+        const PARK_TYPES = ["坡道平面", "坡道機械", "升降平面", "一樓平面", "塔式車位", "升降機械"];
+        const CAR_USAGE_OPTS = ["固定位置使用", "須承租", "須排隊等候", "每日先到先停"];
+        const Q11_OPTS = ["機械式車位故障", "車位不易駛入或停放"];
+        const ENV_CATEGORIES = [
+            { title: "公共行政與社會福利", items: ["警察局/派出所/分駐所", "行政機關", "消防局", "醫院", "體育場", "學校"] },
+            { title: "民生與商業", items: ["公/私有市場", "超市"] },
+            { title: "基礎與公用事業", items: ["機場", "台電變電用地", "高壓電塔(線)", "垃圾場", "掩埋場", "焚化爐"] },
+            { title: "能源易燃", items: ["加油(氣)站", "瓦斯行"] },
+            { title: "宗教與殯葬", items: ["寺廟/宮廟/神壇", "殯儀館", "葬儀社", "公(私)墓", "火化場", "骨灰(骸)存放設施"] }
+        ];
+
+        // Alert Modal
+        const AlertModal = ({ isOpen, message, onClose }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/60 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+                    <div className="bg-white rounded-2xl shadow-2xl max-w-sm w-full overflow-hidden animate-in zoom-in-95 duration-200" onClick={e => e.stopPropagation()}>
+                        <div className="bg-red-500 p-4 flex items-center gap-3">
+                            <i data-lucide="alert-circle" className="text-white w-6 h-6"></i>
+                            <h3 className="text-white font-black text-lg">提醒：尚有題目未填寫</h3>
+                        </div>
+                        <div className="p-6">
+                            <p className="text-slate-600 mb-3 font-bold text-lg">為了確保調查表完整性，請完成以下項目：</p>
+                            <ul className="list-disc pl-5 space-y-1 text-red-600 font-bold text-base max-h-[40vh] overflow-y-auto">
+                                {message.split('\n').map((line, i) => line && <li key={i}>{line}</li>)}
+                            </ul>
+                        </div>
+                        <div className="p-4 bg-slate-50 border-t flex justify-end">
+                            <button onClick={onClose} className="bg-slate-800 text-white px-6 py-2.5 rounded-xl font-bold hover:bg-slate-700 transition active:scale-95 shadow-lg w-full sm:w-auto text-lg">
+                                我知道了
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        // Share Modal
+        const ShareModal = ({ isOpen, type, previewUrls, onAction, onClose, isMobile }) => {
+            if (!isOpen) return null;
+            return (
+                <div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center p-4 backdrop-blur-sm animate-in fade-in duration-200" onClick={onClose}>
+                    <div className="bg-white rounded-3xl shadow-2xl max-w-md w-full overflow-hidden animate-in zoom-in-95 duration-200 flex flex-col max-h-[90vh]" onClick={e => e.stopPropagation()}>
+                        <div className="p-5 border-b bg-slate-50 flex justify-between items-center shrink-0">
+                            <h3 className="text-xl font-black text-slate-800 flex items-center gap-2">
+                                <i data-lucide="check-circle" className="text-green-500 w-6 h-6"></i>
+                                {type === 'jpg' ? '圖片建立完成' : '文件建立完成'}
+                            </h3>
+                            <button onClick={onClose} className="p-2 hover:bg-slate-200 rounded-full transition"><i data-lucide="x" className="w-5 h-5 text-slate-500"></i></button>
+                        </div>
+                        
+                        <div className="p-6 overflow-y-auto">
+                            {isMobile ? (
+                                <div className="space-y-4 mb-6">
+                                    <div className="p-4 bg-red-50 border-2 border-red-200 rounded-xl text-red-600 text-base font-black flex flex-col items-center gap-2 text-center animate-pulse shadow-sm">
+                                        <div className="flex items-center gap-2">
+                                            <i data-lucide="alert-triangle" className="w-6 h-6 shrink-0"></i>
+                                            <span className="text-left">提醒您：因安全性設定因素，手機僅可供圖片下載，下載方式將圖片常按即可下載</span>
+                                        </div>
+                                    </div>
+                                    {type === 'jpg' && (
+                                        <div className="grid gap-6">
+                                            {previewUrls.map((url, idx) => (
+                                                <div key={idx} className="relative group">
+                                                    <div className="absolute -top-3 -left-2 bg-black text-white text-sm font-black px-3 py-1 rounded-lg shadow-md z-10">第 {idx + 1} 頁</div>
+                                                    <img src={url} className="w-full rounded-xl border-2 border-slate-200 shadow-lg" alt={`Generated ${idx}`} />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    )}
+                                    {type === 'pdf' && (
+                                        <div className="text-center text-slate-500 py-10">
+                                            <i data-lucide="file-text" className="w-16 h-16 mx-auto mb-4 text-slate-300"></i>
+                                            <p>手機模式下無法預覽 PDF<br/>請使用「匯出 JPG」功能以保存圖片</p>
+                                        </div>
+                                    )}
+                                </div>
+                            ) : (
+                                <>
+                                    {type === 'jpg' && (
+                                        <div className="space-y-4 mb-6">
+                                            <div className="grid gap-6">
+                                                {previewUrls.map((url, idx) => (
+                                                    <div key={idx} className="relative group">
+                                                        <div className="absolute -top-3 -left-2 bg-black text-white text-sm font-black px-3 py-1 rounded-lg shadow-md z-10">第 {idx + 1} 頁</div>
+                                                        <img src={url} className="w-full rounded-xl border-2 border-slate-200 shadow-lg" alt={`Generated ${idx}`} />
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+                                    )}
+                                    {type === 'pdf' && (
+                                        <div className="p-6 bg-blue-50 border border-blue-200 rounded-xl text-blue-800 font-bold mb-6 text-center text-lg flex flex-col items-center gap-3">
+                                            <i data-lucide="file-check" className="w-12 h-12"></i>
+                                            <span>PDF 文件已準備就緒<br/>請點擊下方按鈕下載</span>
+                                        </div>
+                                    )}
+                                </>
+                            )}
+
+                            <div className="space-y-3 pt-2 border-t border-slate-100">
+                                {!isMobile && (
+                                    <button onClick={onAction} className="w-full py-4 bg-sky-600 text-white rounded-2xl font-black text-lg shadow-md hover:bg-sky-700 transition active:scale-95 flex items-center justify-center gap-2">
+                                        <i data-lucide="download" className="w-6 h-6"></i>
+                                        下載檔案
+                                    </button>
+                                )}
+                                {isMobile && type === 'pdf' && (
+                                     <button onClick={onClose} className="w-full py-4 bg-slate-800 text-white rounded-2xl font-black text-lg shadow-md hover:bg-slate-700 transition active:scale-95 flex items-center justify-center gap-2">
+                                        返回並改用 JPG 匯出
+                                    </button>
+                                )}
+                                <button onClick={onClose} className="w-full py-3 text-slate-400 font-bold hover:text-slate-600 transition">
+                                    關閉視窗
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Toast = ({ message, onClose }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 6000); 
+                return () => clearTimeout(timer);
+            }, [onClose]);
+
+            return (
+                <div className="fixed top-4 left-1/2 transform -translate-x-1/2 bg-slate-800 text-white px-6 py-4 rounded-xl shadow-2xl z-[200] flex items-center gap-3 animate-in slide-in-from-top-4 fade-in duration-300 max-w-[90vw]">
+                    <i data-lucide="info" className="w-6 h-6 text-sky-400 shrink-0"></i>
+                    <p className="font-bold text-sm whitespace-pre-wrap leading-relaxed">{message}</p>
+                </div>
+            );
+        };
+        
+        // Status Indicator for Auto Save
+        const SaveStatusIndicator = ({ show }) => {
+            return (
+                <div className={`fixed bottom-20 right-4 lg:bottom-4 lg:right-4 z-50 bg-black/70 text-white px-4 py-2 rounded-full text-xs font-bold transition-opacity duration-300 flex items-center gap-2 ${show ? 'opacity-100' : 'opacity-0'}`}>
+                    <i data-lucide="save" className="w-3 h-3"></i>
+                    已暫存
+                </div>
+            );
+        };
+
+        const CheckBox = ({ checked, label, onClick, labelColor = "text-slate-800", size = "w-8 h-8" }) => (
+            <div className="flex items-center space-x-3 cursor-pointer inline-flex touch-manipulation py-2" onClick={onClick}>
+                <div className={`${size} border-2 border-sky-600 rounded-lg flex-shrink-0 flex items-center justify-center text-lg transition-colors ${checked ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white'}`}>
+                    {checked ? <i data-lucide="check" className="w-5 h-5"></i> : ''}
+                </div>
+                <span className={`font-bold text-2xl ${labelColor}`}>{label}</span>
+            </div>
+        );
+
+        const PreviewResult = ({ checked, label, suffix = "", forceShow = false }) => {
+            if (!checked && !forceShow) return null;
+            return (
+                <div className="preview-checkbox-wrapper mr-3">
+                    <div className={`preview-checkbox-box ${checked ? 'checked' : ''}`}>
+                        {checked ? 'V' : ''}
+                    </div>
+                    <span className="preview-label">{label}{suffix}</span>
+                </div>
+            );
+        };
+
+        const LandingPage = ({ onSelect }) => {
+            return (
+                <div className="min-h-screen bg-slate-100 flex flex-col items-center justify-center p-4">
+                    <div className="bg-white p-10 rounded-3xl shadow-2xl max-w-lg w-full text-center space-y-10 animate-in fade-in zoom-in duration-500">
+                        <div className="space-y-2">
+                            <h1 className="text-4xl font-black text-slate-800 tracking-tight">幸福家不動產</h1>
+                            <p className="text-slate-500 font-bold text-lg tracking-widest">物件現況調查系統</p>
+                        </div>
+                        <div className="space-y-6">
+                            <h2 className="text-2xl font-bold text-slate-700">請選擇物件種類</h2>
+                            <div className="grid gap-4">
+                                <button 
+                                    onClick={() => onSelect('house')}
+                                    className="relative w-full py-6 rounded-2xl bg-sky-600 text-white text-2xl font-black shadow-lg hover:bg-sky-700 hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center text-center"
+                                >
+                                    <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
+                                        <i data-lucide="home" className="w-8 h-8"></i>
+                                    </div>
+                                    <span>成屋</span>
+                                </button>
+                                <button 
+                                    onClick={() => onSelect('land')}
+                                    className="relative w-full py-6 rounded-2xl bg-emerald-600 text-white text-2xl font-black shadow-lg hover:bg-emerald-700 hover:scale-[1.02] transition-all active:scale-95 flex items-center justify-center text-center"
+                                >
+                                    <div className="absolute left-8 top-1/2 -translate-y-1/2 flex items-center">
+                                        <i data-lucide="map" className="w-8 h-8"></i>
+                                    </div>
+                                    <span>土地</span>
+                                </button>
+                            </div>
+                        </div>
+                        <p className="text-slate-400 text-sm font-bold">SINGFUJIA REALTY INC.</p>
+                    </div>
+                </div>
+            );
+        };
+
+        const SurveyForm = ({ type, onBack }) => {
+            const DRAFT_KEY = `survey_draft_${type}`;
+
+            // Initialize data from local storage
+            const [data, setData] = useState(() => {
+                const saved = safeStorage.getItem(DRAFT_KEY);
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        // 支援新格式 (content + time) 和舊格式 (只有 content)
+                        return parsed.content || parsed;
+                    } catch(e) {
+                        return INITIAL_STATE;
+                    }
+                }
+                return INITIAL_STATE;
+            });
+
+            // State for draft info (exists, time)
+            const [draftInfo, setDraftInfo] = useState({ exists: false, time: '' });
+
+            const [activeStep, setActiveStep] = useState(1);
+            const [exporting, setExporting] = useState(false);
+            const [mobileTab, setMobileTab] = useState('edit');
+            const [previewPage, setPreviewPage] = useState(1);
+            const [modalOpen, setModalOpen] = useState(false);
+            const [modalContent, setModalContent] = useState('');
+            const [shareModalOpen, setShareModalOpen] = useState(false);
+            const [shareType, setShareType] = useState('jpg'); 
+            const [generatedFiles, setGeneratedFiles] = useState([]); 
+            const [previewUrls, setPreviewUrls] = useState([]); 
+            const [toastMsg, setToastMsg] = useState(null);
+            const [isMobile, setIsMobile] = useState(false);
+            const [saveStatus, setSaveStatus] = useState(false);
+            const [isStorageEnabled, setIsStorageEnabled] = useState(true);
+            
+            const [previewScale, setPreviewScale] = useState(1);
+
+            // Test storage availability
+            useEffect(() => {
+                try {
+                    localStorage.setItem("test_storage", "test");
+                    localStorage.removeItem("test_storage");
+                    setIsStorageEnabled(true);
+                } catch (e) {
+                    console.warn("Storage disabled (likely Google Sites iframe)", e);
+                    setIsStorageEnabled(false);
+                }
+            }, []);
+
+            useEffect(() => {
+                const checkMobile = () => {
+                    const mobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent) || window.innerWidth < 1024;
+                    setIsMobile(mobile);
+                };
+                checkMobile();
+                window.addEventListener('resize', checkMobile);
+                return () => window.removeEventListener('resize', checkMobile);
+            }, []);
+
+            // Check for existing draft on mount
+            useEffect(() => {
+                const checkDraft = () => {
+                    const saved = safeStorage.getItem(DRAFT_KEY);
+                    if (saved) {
+                        try {
+                            const parsed = JSON.parse(saved);
+                            if (parsed.time) {
+                                setDraftInfo({ exists: true, time: parsed.time });
+                            } else {
+                                // 舊版資料沒時間，顯示預設文字
+                                setDraftInfo({ exists: true, time: '未記錄' });
+                            }
+                        } catch (e) {
+                            setDraftInfo({ exists: false, time: '' });
+                        }
+                    } else {
+                        setDraftInfo({ exists: false, time: '' });
+                    }
+                };
+                checkDraft();
+            }, [DRAFT_KEY]);
+
+            // Auto-Save Effect (Trigger on data change)
+            useEffect(() => {
+                if (!isStorageEnabled) return;
+                
+                const saveToStorage = () => {
+                    try {
+                        // 自動存檔也要更新時間，這樣「讀取草稿」按鈕才能顯示最新狀態
+                        // 但為了避免干擾，我們不彈出 alert
+                        const timeStr = getFormattedTime();
+                        const payload = { content: data, time: timeStr };
+                        safeStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+                        
+                        // 更新狀態
+                        setDraftInfo({ exists: true, time: timeStr });
+                        
+                        setSaveStatus(true);
+                        const timer = setTimeout(() => setSaveStatus(false), 1000);
+                        return () => clearTimeout(timer);
+                    } catch(e) {
+                        console.error("Auto save failed", e);
+                    }
+                };
+
+                const timeoutId = setTimeout(saveToStorage, 1000); // 1s debounce
+                return () => clearTimeout(timeoutId);
+
+            }, [data, DRAFT_KEY, isStorageEnabled]);
+
+
+            // 3. Mobile Preview Auto-Scaling
+            useEffect(() => {
+                const handleResize = () => {
+                    if (mobileTab === 'preview' || exporting) {
+                        const containerWidth = window.innerWidth;
+                        const targetWidth = 794; 
+                        if (containerWidth < targetWidth + 40) { 
+                            const newScale = (containerWidth - 20) / targetWidth;
+                            setPreviewScale(newScale);
+                        } else {
+                            setPreviewScale(1);
+                        }
+                    }
+                };
+                
+                handleResize(); // Init
+                window.addEventListener('resize', handleResize);
+                return () => window.removeEventListener('resize', handleResize);
+            }, [mobileTab, exporting]);
+
+
+            // Manual Save (Newly Added)
+            const handleManualSave = () => {
+                if (!isStorageEnabled) {
+                    alert("此環境無法使用儲存功能");
+                    return;
+                }
+                try {
+                    const timeStr = getFormattedTime();
+                    const payload = { content: data, time: timeStr };
+                    safeStorage.setItem(DRAFT_KEY, JSON.stringify(payload));
+                    
+                    setDraftInfo({ exists: true, time: timeStr });
+                    alert(`草稿已儲存（時間：${timeStr}）`);
+                } catch (e) {
+                    alert('儲存失敗');
+                }
+            };
+
+            // Manual Load (Newly Added)
+            const handleManualLoad = () => {
+                if (!isStorageEnabled) {
+                    alert("此環境無法讀取存檔");
+                    return;
+                }
+                
+                // 防呆：檢查目前表單是否有修改過 (與初始值比較)
+                const currentStr = JSON.stringify(data);
+                const initialStr = JSON.stringify(INITIAL_STATE);
+                
+                if (currentStr !== initialStr) {
+                    if (!confirm('讀取存檔將會覆蓋目前填寫的內容，確定要執行嗎？')) {
+                        return;
+                    }
+                }
+
+                const saved = safeStorage.getItem(DRAFT_KEY);
+                if (saved) {
+                    try {
+                        const parsed = JSON.parse(saved);
+                        const content = parsed.content || parsed; // 相容舊格式
+                        setData(content);
+                        alert('讀取成功');
+                    } catch (e) {
+                        alert('讀取失敗，檔案可能損毀');
+                    }
+                } else {
+                    alert('找不到存檔');
+                }
+            };
+
+            const handleManualClear = () => {
+                if (confirm("確定要清除草稿嗎？(此動作不會清空目前畫面上的內容)")) {
+                    safeStorage.removeItem(DRAFT_KEY);
+                    setDraftInfo({ exists: false, time: '' });
+                    setToastMsg("草稿已清除");
+                }
+            };
+
+            // Custom Back Navigation
+            const handleCustomBack = () => {
+                onBack();
+            };
+
+            const page1Ref = useRef(null);
+            const page2Ref = useRef(null);
+            const formScrollRef = useRef(null);
+
+            const update = (key, val) => setData(p => ({ ...p, [key]: val }));
+            const toggleArr = (key, val) => setData(p => ({
+                ...p, [key]: p[key].includes(val) ? p[key].filter(i => i !== val) : [...p[key], val]
+            }));
+
+            useEffect(() => {
+                window.scrollTo({ top: 0, behavior: 'auto' });
+                if (formScrollRef.current) {
+                    formScrollRef.current.scrollTo({ top: 0, behavior: 'auto' });
+                }
+            }, [activeStep]);
+
+            const validateForm = () => {
+                const errors = [];
+                // 基本資料
+                if (!data.caseName) errors.push("物件案名");
+                if (!data.storeName) errors.push("所屬店名");
+                if (!data.agentName) errors.push("調查業務");
+                if (!data.address) errors.push(type === 'land' ? "坐落位置" : "標的地址");
+
+                if (type === 'land') {
+                    if (!data.land_road_smooth) errors.push("1. 道路與進出動線是否順暢");
+                    if (!data.land_road_ownership) errors.push("2. 臨路的情況 (所有權)");
+                    if (!data.land_road_material) errors.push("2. 臨路的情況 (路面材質)");
+                    if (data.land_road_material === '其他' && !data.land_road_material_other) errors.push("2. 臨路的情況 (路面材質其他說明)");
+                    if (!data.land_has_ditch) errors.push("2. 臨路的情況 (土地前方有無水溝)");
+                    if (data.land_has_ditch === '其他' && !data.land_has_ditch_other) errors.push("2. 臨路的情況 (水溝其他說明)");
+                    if (!data.land_has_height_diff) errors.push("2. 臨路的情況 (土地與道路是否有高低落差)");
+                    if (data.land_has_height_diff === '其他' && !data.land_has_height_diff_other) errors.push("2. 臨路的情況 (高低落差其他說明)");
+                    
+                    if (!data.land_boundary_markers) errors.push("3. 界址與佔用 (有無界樁)");
+                    if (data.land_boundary_markers === '其他' && !data.land_boundary_markers_desc) errors.push("3. 界址與佔用 (界樁其他)");
+                    if (!data.land_boundary_encroached) errors.push("3. 界址與佔用 (有無被越界佔用)");
+                    if (data.land_boundary_encroached === '其他' && !data.land_boundary_encroached_desc) errors.push("3. 界址與佔用 (越界佔用其他)");
+                    if (!data.land_boundary_encroaching) errors.push("3. 界址與佔用 (有無佔用鄰地)");
+                    if (data.land_boundary_encroaching === '疑似/其他' && !data.land_boundary_encroaching_desc) errors.push("3. 界址與佔用 (佔用鄰地其他)");
+                    
+                    if (!data.land_q1_hasBuilding) errors.push("4. 土地上方是否有其他物");
+
+                    if (!data.land_infra_electricity) errors.push("5. 公共管線 (電力)");
+                    if (data.land_infra_electricity === '其他' && !data.land_infra_electricity_other) errors.push("5. 公共管線 (電力其他)");
+                    if (!data.land_infra_water) errors.push("5. 公共管線 (水源)");
+                    if (data.land_infra_water === '其他' && !data.land_infra_water_other) errors.push("5. 公共管線 (水源其他)");
+
+                    if (!data.q16_noFacilities && data.q16_items.length === 0 && !data.q16_hasOther) {
+                         errors.push("6. 重要環境設施 (若無請勾選「無重要環境設施」)");
+                    }
+                    
+                    if (!data.land_q7_issue) errors.push("7. 特別注意事項");
+
+                } else {
+                    if (!data.q1_hasExt) errors.push("1. 增建情況");
+                    if (!data.q2_hasOccupancy) errors.push("2. 佔用鄰地/道路");
+                    if (!data.q3_hasLeak) errors.push("3. 滲漏水/壁癌");
+                    if (!data.q4_hasIssue) errors.push("4. 結構安全");
+                    if (!data.q5_hasTilt) errors.push("5. 傾斜情況");
+                    if (!data.q6_hasIssue) errors.push("6. 測量成果圖/面積");
+                    if (!data.q7_hasIssue) errors.push("7. 水電瓦斯異常");
+                    
+                    if (!data.publicFacilities) errors.push("公共設施情況");
+                    if (!data.q8_stairIssue) errors.push("8. 電梯/地下室結構");
+                    if (!data.q9_hasIssue) errors.push("9. 須注意設施");
+                    
+                    if (!data.q10_noParking && !data.q11_hasIssue) errors.push("11. 車位異常 (若無車位請先於Q10勾選無車位)");
+                    else if (data.q10_noParking) { 
+                    } else {
+                        if (!data.q11_hasIssue) errors.push("11. 車位異常");
+                        if (!data.q12_hasNote) errors.push("12. 車位補充");
+                    }
+
+                    if (!data.isNotFirstFloor) {
+                        if (!data.q13_occupancy) errors.push("13. 空地/騎樓佔用");
+                        if (!data.q14_access) errors.push("14. 進出經他人土地");
+                        if (!data.q15_occupy) errors.push("15. 增建佔用");
+                    }
+                    
+                    if (!data.q16_noFacilities && data.q16_items.length === 0 && !data.q16_hasOther) {
+                        errors.push("16. 重要環境設施 (若無請勾選「無重要環境設施」)");
+                    }
+
+                    if (!data.q17_issue) errors.push("17. 特別注意事項");
+                }
+
+                return errors;
+            };
+
+            const handlePreviewRequest = (targetTab = 'preview') => {
+                const validationErrors = validateForm();
+                if (validationErrors.length > 0) {
+                    setModalContent(validationErrors.join("\n"));
+                    setModalOpen(true);
+                    return false;
+                }
+                if (window.innerWidth < 1024) { 
+                    window.scrollTo(0,0);
+                    setMobileTab(targetTab);
+                }
+                return true;
+            };
+
+            const handleExport = async (fmt) => {
+                const validationErrors = validateForm();
+                if (validationErrors.length > 0) {
+                    setModalContent(validationErrors.join("\n"));
+                    setModalOpen(true);
+                    return; 
+                }
+
+                setExporting(true);
+                if (window.innerWidth < 1024) setMobileTab('preview');
+                
+                window.scrollTo(0, 0);
+                await new Promise(resolve => setTimeout(resolve, 800));
+
+                try {
+                    const options = { 
+                        scale: 2, // High resolution capture
+                        useCORS: true, 
+                        backgroundColor: '#ffffff',
+                        windowWidth: 1920,
+                        // html2canvas captures full height by default
+                    };
+
+                    const canvas1 = await html2canvas(page1Ref.current, options);
+                    const canvas2 = await html2canvas(page2Ref.current, options);
+                    const filenameBase = `現況調查表_${data.caseName || '未命名'}`;
+
+                    let filesToShare = [];
+                    let urlsToPreview = [];
+
+                    if (fmt === 'jpg') {
+                        const blob1 = await new Promise(r => canvas1.toBlob(r, 'image/jpeg', 0.9));
+                        const blob2 = await new Promise(r => canvas2.toBlob(r, 'image/jpeg', 0.9));
+                        
+                        const file1 = new File([blob1], `正面_${filenameBase}.jpg`, { type: 'image/jpeg' });
+                        const file2 = new File([blob2], `背面_${filenameBase}.jpg`, { type: 'image/jpeg' });
+                        filesToShare = [file1, file2];
+                        urlsToPreview = [URL.createObjectURL(blob1), URL.createObjectURL(blob2)];
+
+                    } else {
+                        const { jsPDF } = window.jspdf;
+                        const pdf = new jsPDF('p', 'mm', 'a4');
+                        const pdfW = 210;
+                        const pdfH = 297;
+
+                        // 縮放並添加圖片 (自動等比例縮放邏輯)
+                        const addScaledImage = (canvas) => {
+                            const imgData = canvas.toDataURL('image/jpeg', 0.95);
+                            const imgProps = pdf.getImageProperties(imgData);
+                            
+                            // 計算寬度與高度的縮放比例
+                            const widthRatio = pdfW / imgProps.width;
+                            const heightRatio = pdfH / imgProps.height;
+                            
+                            // 取較小的比例 (Math.min)，確保內容「完整塞入」A4 頁面
+                            // 若內容過高，會依據高度縮小；若內容過寬，會依據寬度縮小
+                            const ratio = Math.min(widthRatio, heightRatio);
+                            
+                            const w = imgProps.width * ratio;
+                            const h = imgProps.height * ratio;
+                            
+                            // 水平置中
+                            const x = (pdfW - w) / 2;
+                            // 垂直靠上對齊
+                            const y = 0; 
+                            
+                            pdf.addImage(imgData, 'JPEG', x, y, w, h);
+                        };
+
+                        addScaledImage(canvas1);
+                        pdf.addPage();
+                        addScaledImage(canvas2);
+                        
+                        const pdfBlob = pdf.output('blob');
+                        const file = new File([pdfBlob], `${filenameBase}.pdf`, { type: 'application/pdf' });
+                        filesToShare = [file];
+                        urlsToPreview = [URL.createObjectURL(pdfBlob)];
+                    }
+
+                    setGeneratedFiles(filesToShare);
+                    setPreviewUrls(urlsToPreview);
+                    setShareType(fmt);
+                    setShareModalOpen(true);
+                    
+                    // 匯出後可選：清空暫存（如果業務需求是填完就清空，可以在此加入）
+                    // safeStorage.removeItem(DRAFT_KEY); // 目前保留資料，讓使用者自行決定是否清空
+
+                } catch (e) {
+                    console.error(e);
+                    setToastMsg("檔案產生發生錯誤，請重試"); 
+                } finally { 
+                    setExporting(false); 
+                }
+            };
+
+            const handleAction = async () => {
+                if (isMobile) {
+                    setToastMsg("提醒您：因安全性設定因素，手機僅可供圖片下載，下載方式將圖片常按即可下載");
+                    return;
+                }
+                try {
+                    const downloadFile = (url, name) => {
+                        const link = document.createElement('a');
+                        link.href = url;
+                        link.download = name;
+                        link.style.display = 'none';
+                        document.body.appendChild(link);
+                        link.click();
+                        document.body.removeChild(link);
+                    };
+
+                    generatedFiles.forEach((file, index) => {
+                        setTimeout(() => {
+                            downloadFile(previewUrls[index], file.name);
+                        }, index * 800);
+                    });
+                    
+                    setToastMsg("檔案已開始下載至您的電腦\n(若有多個檔案請留意瀏覽器下載提示)");
+                } catch (e) {
+                    console.error("Download failed", e);
+                    setToastMsg("自動下載失敗，請嘗試手動儲存");
+                }
+            };
+
+            const CheckBox = ({ checked, label, onClick, labelColor = "text-slate-800", size = "w-8 h-8" }) => (
+                <div className="flex items-center space-x-3 cursor-pointer inline-flex touch-manipulation py-2" onClick={onClick}>
+                    <div className={`${size} border-2 border-sky-600 rounded-lg flex-shrink-0 flex items-center justify-center text-lg transition-colors ${checked ? 'bg-sky-600 border-sky-600 text-white' : 'bg-white'}`}>
+                        {checked ? <i data-lucide="check" className="w-5 h-5"></i> : ''}
+                    </div>
+                    <span className={`font-bold text-2xl ${labelColor}`}>{label}</span>
+                </div>
+            );
+
+            const PreviewResult = ({ checked, label, suffix = "", forceShow = false }) => {
+                if (!checked && !forceShow) return null;
+                return (
+                    <div className="preview-checkbox-wrapper mr-3">
+                        <div className={`preview-checkbox-box ${checked ? 'checked' : ''}`}>
+                            {checked ? 'V' : ''}
+                        </div>
+                        <span className="preview-label">{label}{suffix}</span>
+                    </div>
+                );
+            };
+
+            useEffect(() => {
+                if (window.lucide) window.lucide.createIcons();
+            }, [activeStep, data, mobileTab, previewPage, exporting, modalOpen, shareModalOpen, type, saveStatus]);
+
+            return (
+                <div className="flex flex-col lg:flex-row h-full bg-slate-100 overflow-hidden">
+                    
+                    {toastMsg && <Toast message={toastMsg} onClose={() => setToastMsg(null)} />}
+                    <SaveStatusIndicator show={saveStatus} />
+
+                    <AlertModal isOpen={modalOpen} message={modalContent} onClose={() => setModalOpen(false)} />
+                    
+                    <ShareModal 
+                        isOpen={shareModalOpen} 
+                        type={shareType}
+                        previewUrls={previewUrls}
+                        onAction={handleAction}
+                        onClose={() => setShareModalOpen(false)}
+                        isMobile={isMobile}
+                    />
+
+                    {/* Left Column */}
+                    <div className={`w-full lg:w-[600px] bg-white shadow-2xl flex flex-col no-print z-40 border-r border-slate-200 transition-transform duration-300 absolute inset-0 lg:relative ${mobileTab === 'edit' ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}`}>
+                         <div className="p-5 bg-sky-500 text-white flex flex-col md:flex-row justify-between items-center shadow-md shrink-0 gap-4">
+                            <div className="flex items-center gap-3 w-full md:w-auto overflow-x-auto pb-2 md:pb-0">
+                                <button onClick={handleCustomBack} className="bg-white/20 px-4 py-2 rounded-lg hover:bg-white/30 transition active:scale-95 flex items-center gap-2 whitespace-nowrap" title="返回首頁">
+                                    <i data-lucide="arrow-left" className="w-5 h-5"></i>
+                                    <span className="font-bold text-lg">回上一頁</span>
+                                </button>
+                                
+                                <button 
+                                    onClick={handleManualSave} 
+                                    className="bg-emerald-600 px-4 py-2 rounded-lg hover:bg-emerald-700 transition active:scale-95 flex items-center gap-2 whitespace-nowrap font-bold text-base shadow-sm text-white border border-emerald-400/30"
+                                >
+                                    <i data-lucide="save" className="w-4 h-4"></i>
+                                    儲存草稿
+                                </button>
+
+                                <button 
+                                    onClick={handleManualLoad} 
+                                    disabled={!draftInfo.exists}
+                                    className={`px-4 py-2 rounded-lg transition active:scale-95 flex items-center gap-2 whitespace-nowrap font-bold text-base shadow-sm border border-amber-400/30 ${draftInfo.exists ? 'bg-amber-500 hover:bg-amber-600 text-white' : 'bg-slate-300 text-slate-500 cursor-not-allowed border-slate-300'}`}
+                                >
+                                    <i data-lucide="download" className="w-4 h-4"></i>
+                                    {draftInfo.exists ? `讀取草稿 (${draftInfo.time})` : '無暫存資料'}
+                                </button>
+
+                                <button onClick={handleManualClear} className="bg-red-500/90 px-4 py-2 rounded-lg hover:bg-red-500 transition active:scale-95 flex items-center gap-2 whitespace-nowrap font-bold text-base shadow-sm border border-red-400/30">
+                                    <i data-lucide="trash-2" className="w-4 h-4"></i>
+                                    清除草稿
+                                </button>
+                            </div>
+                            <span className="bg-white/20 px-3 py-1.5 rounded-lg text-sm font-bold tracking-wide whitespace-nowrap hidden md:block">{data.version}</span>
+                        </div>
+                        
+                        <div ref={formScrollRef} className="flex-grow overflow-y-auto p-6 space-y-8 pb-40 lg:pb-10 bg-slate-50 relative">
+                             {/* Step 1 */}
+                             {activeStep === 1 && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-right duration-300">
+                                    <h3 className="text-2xl font-black text-sky-800 border-l-8 border-sky-500 pl-4">第一步：基本資料</h3>
+                                    <div className="space-y-6 bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
+                                        <div><label className="block text-slate-600 font-bold mb-1 text-xl">物件案名</label><input type="text" className="full-width-input" value={data.caseName} onChange={e => update('caseName', e.target.value)} placeholder="輸入案名" autoComplete="off" /></div>
+                                        <div className="grid grid-cols-2 gap-4">
+                                            <div><label className="block text-slate-600 font-bold mb-1 text-xl">所屬店名</label><input type="text" className="full-width-input" value={data.storeName} onChange={e => update('storeName', e.target.value)} placeholder="輸入店名" autoComplete="off" /></div>
+                                            <div><label className="block text-slate-600 font-bold mb-1 text-xl">調查業務</label><input type="text" className="full-width-input" value={data.agentName} onChange={e => update('agentName', e.target.value)} placeholder="輸入姓名" autoComplete="off" /></div>
+                                        </div>
+                                        <div><label className="block text-slate-600 font-bold mb-1 text-xl">填寫日期</label><input type="date" className="full-width-input" value={data.fillDate} onChange={e => update('fillDate', e.target.value)} /></div>
+                                        <div><label className="block text-slate-600 font-bold mb-1 text-xl">{type === 'land' ? '坐落位置' : '標的地址'}</label><input type="text" className="full-width-input" value={data.address} onChange={e => update('address', e.target.value)} placeholder={type === 'land' ? "輸入坐落位置或相關位置" : "輸入地址"} autoComplete="off" /></div>
+                                    </div>
+                                    <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                        <div className="flex flex-col gap-4">
+                                            <span className="text-2xl font-black text-slate-800">本物件現況</span>
+                                            <div className="flex gap-4">
+                                                {['可進入', '不可進入'].map(v => (<button key={v} onClick={() => update('access', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl transition-all ${data.access === v ? 'bg-sky-600 text-white shadow-lg ring-2 ring-sky-300' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'}`}>{v}</button>))}
+                                            </div>
+                                        </div>
+                                        {data.access === '不可進入' && (
+                                            <div className="bg-red-50 p-5 rounded-2xl border-2 border-red-100">
+                                                <div className="space-y-4 mb-4">
+                                                    {(type === 'land' ? ACCESS_SUB_OPTIONS_LAND : ACCESS_SUB_OPTIONS).map(opt => (
+                                                        <div key={opt}>
+                                                            <label className="flex items-center space-x-4 cursor-pointer p-2 rounded-lg hover:bg-red-100/50 transition-colors">
+                                                                <input type="checkbox" className="w-6 h-6 accent-red-600 rounded" checked={data.accessType.includes(opt)} onChange={() => toggleArr('accessType', opt)} />
+                                                                <span className="text-slate-800 font-bold text-2xl">{opt}</span>
+                                                            </label>
+                                                            {opt === '其他' && data.accessType.includes('其他') && (<input type="text" className="full-width-input ml-12 mt-2 w-[calc(100%-3rem)]" value={data.accessOther} onChange={e => update('accessOther', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                                <div className="warning-box text-lg p-3 bg-white shadow-sm border-l-4 border-red-500 rounded-r-lg w-full text-center">
+                                                    {type === 'land' ? '若為上述情況，建議待找可進行調查時間點時再進行完整調查' : '若為上述情況，建議待整屋搬空/清空後再進行完整調查'}
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                </div>
+                             )}
+                             
+                             {/* Step 2-4 Logic Injected Here (Using same structure as above for brevity in display, but functionally complete) */}
+                             {activeStep === 2 && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-right duration-300">
+                                    <h3 className="text-2xl font-black text-sky-800 border-l-8 border-sky-500 pl-4">{type === 'land' ? '第二步：現場情況' : '第二步：內部情況'}</h3>
+                                    {/* (Rest of Step 2 content remains identical to previous version) */}
+                                    {type === 'land' ? (
+                                        <>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">1. 道路與進出動線是否順暢</p>
+                                                <div className="flex gap-4">{['是', '否'].map(v => (<button key={v} onClick={() => update('land_road_smooth', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.land_road_smooth === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>))}</div>
+                                                {data.land_road_smooth === '否' && (<input type="text" className="full-width-input" value={data.land_road_desc} onChange={e => update('land_road_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
+                                            </div>
+                                            {/* ... (Land Q2-Q5) ... */}
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">2. 臨路的情況</p>
+                                                <div className="flex gap-4">{['公有', '私有'].map(v => (<button key={v} onClick={() => update('land_road_ownership', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.land_road_ownership === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>))}</div>
+                                                {data.land_road_ownership && (
+                                                    <div className="space-y-6 animate-in fade-in slide-in-from-top-2 pt-2">
+                                                        <div className="bg-slate-50 p-4 rounded-xl">
+                                                            <p className="font-bold text-lg mb-3 text-slate-700">路面材質：</p>
+                                                            <div className="flex flex-col gap-3">
+                                                                <div className="flex flex-wrap gap-4">{['柏油路', '水泥路', '泥巴路'].map(m => (<label key={m} className="flex items-center space-x-2 cursor-pointer bg-white px-4 py-2 rounded-lg border border-slate-200 hover:border-sky-400 transition-colors"><input type="radio" name="land_material" className="w-5 h-5 accent-sky-600" checked={data.land_road_material === m} onChange={() => update('land_road_material', m)} /><span className="font-bold text-2xl">{m}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer bg-white px-4 py-2 rounded-lg border border-slate-200 hover:border-sky-400 transition-colors"><input type="radio" name="land_material" className="w-5 h-5 accent-sky-600" checked={data.land_road_material === '其他'} onChange={() => update('land_road_material', '其他')} /><span className="font-bold text-2xl">其他</span></label></div>
+                                                                {data.land_road_material === '其他' && (<input type="text" className="full-width-input" value={data.land_road_material_other} onChange={e => update('land_road_material_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
+                                                            </div>
+                                                        </div>
+                                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                                            <div className="bg-slate-50 p-4 rounded-xl">
+                                                                <p className="font-bold text-lg mb-3 text-slate-700">土地前方有無水溝？</p>
+                                                                <div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_ditch" className="w-5 h-5 accent-sky-600" checked={data.land_has_ditch === v} onChange={() => update('land_has_ditch', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_ditch" className="w-5 h-5 accent-sky-600" checked={data.land_has_ditch === '其他'} onChange={() => update('land_has_ditch', '其他')} /><span className="font-bold text-2xl">其他</span></label></div>{data.land_has_ditch === '其他' && (<input type="text" className="full-width-input" value={data.land_has_ditch_other} onChange={e => update('land_has_ditch_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div>
+                                                            </div>
+                                                            <div className="bg-slate-50 p-4 rounded-xl">
+                                                                <p className="font-bold text-lg mb-3 text-slate-700">土地與道路是否有高低落差？</p>
+                                                                <div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_height" className="w-5 h-5 accent-sky-600" checked={data.land_has_height_diff === v} onChange={() => update('land_has_height_diff', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_height" className="w-5 h-5 accent-sky-600" checked={data.land_has_height_diff === '其他'} onChange={() => update('land_has_height_diff', '其他')} /><span className="font-bold text-2xl">其他</span></label></div>{data.land_has_height_diff === '其他' && (<input type="text" className="full-width-input" value={data.land_has_height_diff_other} onChange={e => update('land_has_height_diff_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">3. 界址與佔用</p>
+                                                <div className="grid grid-cols-1 gap-6">
+                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無界樁？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_boundary" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_markers === v} onChange={() => update('land_boundary_markers', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_boundary" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_markers === '其他'} onChange={() => update('land_boundary_markers', '其他')} /><span className="font-bold text-2xl">其他</span></label></div>{data.land_boundary_markers === '其他' && (<input type="text" className="full-width-input" value={data.land_boundary_markers_desc} onChange={e => update('land_boundary_markers_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
+                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無被越界佔用？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroached" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroached === v} onChange={() => update('land_boundary_encroached', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroached" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroached === '其他'} onChange={() => update('land_boundary_encroached', '其他')} /><span className="font-bold text-2xl">其他</span></label></div>{data.land_boundary_encroached === '其他' && (<input type="text" className="full-width-input" value={data.land_boundary_encroached_desc} onChange={e => update('land_boundary_encroached_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
+                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無佔用鄰地？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroaching" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroaching === v} onChange={() => update('land_boundary_encroaching', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroaching" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroaching === '疑似/其他'} onChange={() => update('land_boundary_encroaching', '疑似/其他')} /><span className="font-bold text-2xl">疑似/其他</span></label></div>{data.land_boundary_encroaching === '疑似/其他' && (<input type="text" className="full-width-input" value={data.land_boundary_encroaching_desc} onChange={e => update('land_boundary_encroaching_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">4. 土地上方是否有其他物？</p>
+                                                <div className="warning-box text-lg w-full p-2 bg-red-50 rounded text-center">※如有請在下方勾選詳細情況</div>
+                                                <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('land_q1_hasBuilding', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.land_q1_hasBuilding === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.land_q1_hasBuilding === '是' && (
+                                                    <div className="space-y-4 pt-2">
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            {/* New Item Logic for Legal Building */}
+                                                            <div className="bg-slate-50 p-4 rounded-xl border border-slate-200">
+                                                                <p className="font-bold text-xl text-slate-800 mb-3">是否為合法建物？</p>
+                                                                <div className="flex gap-6 items-center">
+                                                                    {['是', '否'].map(opt => (
+                                                                        <label key={opt} className="flex items-center space-x-3 cursor-pointer">
+                                                                            <input type="radio" name="land_isLegal" className="w-6 h-6 accent-sky-600" checked={data.land_q1_isLegal === opt} onChange={() => update('land_q1_isLegal', opt)} />
+                                                                            <span className="font-bold text-xl">{opt}</span>
+                                                                        </label>
+                                                                    ))}
+                                                                </div>
+                                                                {data.land_q1_isLegal && (
+                                                                    <div className="mt-4 ml-2 animate-in fade-in slide-in-from-top-1">
+                                                                        <CheckBox checked={data.land_q1_unregistered_hasOccupant} label="有租客或佔有人" onClick={() => update('land_q1_unregistered_hasOccupant', !data.land_q1_unregistered_hasOccupant)} />
+                                                                    </div>
+                                                                )}
+                                                            </div>
+
+                                                            {LAND_Q1_OPTIONS.map(i => (
+                                                                <div key={i} className="bg-slate-50 p-3 rounded-xl">
+                                                                    <CheckBox checked={data.land_q1_items.includes(i)} label={i} onClick={() => toggleArr('land_q1_items', i)} />
+                                                                    {i === "廢棄物" && (<div className="ml-10 mt-1 text-red-600 font-bold text-base">※有無被回填不明土壤(顏色怪異、有化學味)？若埋有毒廢棄物，需做土壤檢測</div>)}
+                                                                    {i === "農作物與植栽" && data.land_q1_items.includes("農作物與植栽") && (<div className="ml-10 mt-2 space-y-2"><div className="flex items-center gap-2"><span className="font-bold text-lg">待</span><input type="number" className="w-20 border rounded p-1 text-center" value={data.land_q1_harvestMonth} onChange={e => update('land_q1_harvestMonth', e.target.value)} /><span className="font-bold text-lg">月收成</span></div><input type="text" className="full-width-input" value={data.land_q1_cropsDesc} onChange={e => update('land_q1_cropsDesc', e.target.value)} placeholder="請說明情況" autoComplete="off" /></div>)}
+                                                                    {i === "宗教與殯葬設施" && data.land_q1_items.includes("宗教與殯葬設施") && (<div className="ml-10 mt-2 flex gap-4">{LAND_RELIGIOUS_OPTIONS.map(opt => (<CheckBox key={opt} checked={data.land_q1_religious_details.includes(opt)} label={opt} onClick={() => toggleArr('land_q1_religious_details', opt)} size="w-6 h-6" />))}</div>)}
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.land_q1_hasOther} label="其他" onClick={() => update('land_q1_hasOther', !data.land_q1_hasOther)} />{data.land_q1_hasOther && <input type="text" className="full-width-input" value={data.land_q1_other} onChange={e => update('land_q1_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">5. 公共管線與基礎設施(水電來源)</p>
+                                                <div className="space-y-6">
+                                                    <div className="bg-slate-50 p-4 rounded-xl">
+                                                        <p className="font-bold text-lg mb-3 text-slate-700">電力：</p>
+                                                        <div className="flex flex-col gap-3">
+                                                            <div className="flex gap-4">
+                                                                {['無', '有', '其他'].map(opt => (
+                                                                    <label key={opt} className="flex items-center space-x-2 cursor-pointer bg-white px-4 py-2 rounded-lg border border-slate-200 hover:border-sky-400 transition-colors">
+                                                                        <input type="radio" name="land_elec" className="w-5 h-5 accent-sky-600" checked={data.land_infra_electricity === opt} onChange={() => update('land_infra_electricity', opt)} />
+                                                                        <span className="font-bold text-2xl">{opt}</span>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                            {data.land_infra_electricity === '有' && (<div className="ml-2 flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-1">{['電線桿', '變電箱', '其他'].map(item => (<CheckBox key={item} checked={data.land_infra_electricity_items.includes(item)} label={item} onClick={() => toggleArr('land_infra_electricity_items', item)} size="w-6 h-6" />))}</div>)}
+                                                            {data.land_infra_electricity === '其他' && (<input type="text" className="full-width-input" value={data.land_infra_electricity_other} onChange={e => update('land_infra_electricity_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-slate-50 p-4 rounded-xl">
+                                                        <p className="font-bold text-lg mb-3 text-slate-700">水源：</p>
+                                                        <div className="flex flex-col gap-3">
+                                                            <div className="flex gap-4">
+                                                                {['無', '有', '其他'].map(opt => (
+                                                                    <label key={opt} className="flex items-center space-x-2 cursor-pointer bg-white px-4 py-2 rounded-lg border border-slate-200 hover:border-sky-400 transition-colors">
+                                                                        <input type="radio" name="land_water" className="w-5 h-5 accent-sky-600" checked={data.land_infra_water === opt} onChange={() => update('land_infra_water', opt)} />
+                                                                        <span className="font-bold text-2xl">{opt}</span>
+                                                                    </label>
+                                                                ))}
+                                                            </div>
+                                                            {data.land_infra_water === '有' && (<div className="ml-2 flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-1">{['自來水管線', '湖水', '井水', '灌溉溝渠', '其他'].map(item => (<CheckBox key={item} checked={data.land_infra_water_items.includes(item)} label={item} onClick={() => toggleArr('land_infra_water_items', item)} size="w-6 h-6" />))}</div>)}
+                                                            {data.land_infra_water === '其他' && (<input type="text" className="full-width-input" value={data.land_infra_water_other} onChange={e => update('land_infra_water_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            {/* House Steps Q1-Q7 */}
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">1. 是否有增建情況？</p>
+                                                <div className="warning-box text-lg w-full p-2 bg-red-50 rounded text-center">※如有增建請繪製格局圖時，標示增建情況及位置</div>
+                                                <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q1_hasExt', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q1_hasExt === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q1_hasExt === '是' && (
+                                                    <div className="space-y-4 pt-2">
+                                                        <div className="grid grid-cols-1 gap-3">{EXT_LIST.map(i => (<div key={i} className="bg-slate-50 p-3 rounded-xl"><CheckBox checked={data.q1_items.includes(i)} label={i} onClick={() => toggleArr('q1_items', i)} />{i === "地下室增建" && data.q1_items.includes("地下室增建") && (<div className="ml-10 mt-2"><CheckBox checked={data.q1_basementPartition} label="內含隔間" onClick={() => update('q1_basementPartition', !data.q1_basementPartition)} /></div>)}</div>))}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q1_hasOther} label="其他" onClick={() => update('q1_hasOther', !data.q1_hasOther)} />{data.q1_hasOther && <input type="text" className="full-width-input" value={data.q1_other} onChange={e => update('q1_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {/* ... House Q2-Q7 Same structure ... */}
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800 leading-snug">2. 建物或增建部分是否有占用鄰地、道路用地或他人建物占用本案之土地？</p>
+                                                <div className="warning-box text-lg w-full p-2 bg-red-50 rounded text-center">※請先至全國土地使用分區資訊查詢系統確認本案分區與周圍，再判斷是否須調閱土地使用分區</div>
+                                                <div className="flex gap-4">{['否', '是', '疑似'].map(v => <button key={v} onClick={() => update('q2_hasOccupancy', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q2_hasOccupancy === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q2_hasOccupancy !== '' && data.q2_hasOccupancy !== '否' && <input type="text" className="full-width-input" value={data.q2_desc} onChange={e => update('q2_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />}
+                                                {data.q2_hasOccupancy === '疑似' && <div className="warning-box text-lg w-full p-2 bg-red-50 rounded text-center">※如糾紛、爭議、接獲拆除通知或公告拆除</div>}
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">3. 是否有滲漏水、壁癌等情況？</p>
+                                                <div className="flex gap-4 mb-2">{['否', '是'].map(v => <button key={v} onClick={() => update('q3_hasLeak', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q3_hasLeak === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q3_hasLeak === '是' && (
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-2 gap-4">{LEAK_LOCATIONS.map(i => <div key={i} className="bg-slate-50 p-3 rounded-xl"><CheckBox checked={data.q3_locations.includes(i)} label={i} onClick={() => toggleArr('q3_locations', i)} /></div>)}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl space-y-2"><CheckBox checked={data.q3_hasOther} label="其他" onClick={() => update('q3_hasOther', !data.q3_hasOther)} />{data.q3_hasOther && <input type="text" className="full-width-input" value={data.q3_other} onChange={e => update('q3_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl space-y-2"><CheckBox checked={data.q3_suspected} label="疑似有滲漏水、壁癌，位置說明：" onClick={() => update('q3_suspected', !data.q3_suspected)} />{data.q3_suspected && <input type="text" className="full-width-input" value={data.q3_suspectedDesc} onChange={e => update('q3_suspectedDesc', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q3_ceilingWrapped} label="全屋天花板包覆" onClick={() => update('q3_ceilingWrapped', !data.q3_ceilingWrapped)} /></div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">4. 結構牆面是否有結構安全之虞的瑕疵</p>
+                                                <div className="warning-box text-lg w-full p-2 bg-red-50 rounded text-center">※可從浴廁、廚房通風孔/維修孔、輕鋼架推開檢查</div>
+                                                <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q4_hasIssue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q4_hasIssue === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q4_hasIssue === '是' && (
+                                                    <div className="space-y-4 pt-2">
+                                                        <div className="grid grid-cols-1 gap-4">{STRUCTURAL_ISSUES.map(i => <div key={i} className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q4_items.includes(i)} label={i} onClick={() => toggleArr('q4_items', i)} /></div>)}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q4_hasOther} label="其他" onClick={() => update('q4_hasOther', !data.q4_hasOther)} />{data.q4_hasOther && <input type="text" className="full-width-input" value={data.q4_otherDesc} onChange={e => update('q4_otherDesc', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q4_suspected} label="疑似須注意，位置說明：" onClick={() => update('q4_suspected', !data.q4_suspected)} />{data.q4_suspected && <input type="text" className="full-width-input" value={data.q4_suspectedDesc} onChange={e => update('q4_suspectedDesc', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q4_ceilingWrapped} label="全屋天花板包覆，無法觀察" onClick={() => update('q4_ceilingWrapped', !data.q4_ceilingWrapped)} /></div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="grid grid-cols-1 gap-8">
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                                                    <p className="text-2xl font-black text-slate-800">5. 是否有傾斜情況？</p>
+                                                    <div className="flex gap-4">{['否', '是', '疑似'].map(v => <button key={v} onClick={() => update('q5_hasTilt', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q5_hasTilt === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                    {data.q5_hasTilt === '是' && <input type="text" className="full-width-input" placeholder="請說明情況" value={data.q5_desc} onChange={e => update('q5_desc', e.target.value)} autoComplete="off" />}
+                                                    {data.q5_hasTilt === '疑似' && <input type="text" className="full-width-input" placeholder="請說明情況" value={data.q5_suspectedDesc} onChange={e => update('q5_suspectedDesc', e.target.value)} autoComplete="off" />}
+                                                </div>
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                                                    <p className="text-2xl font-black text-slate-800 leading-snug">6. 建物測量成果圖是否與現場長寬不符？建物面積是否有明顯短少之情況？</p>
+                                                    <div className="warning-box text-lg w-full p-2 bg-red-50 rounded text-center">※可簡易測量最長/短/寬/窄之距離 (因牆面厚度，測量的長或寬與建物成果圖尺寸落差30公分內為合理範圍內)</div>
+                                                    <div className="flex gap-4">
+                                                        {['否', '是', '無法丈量'].map(v => (
+                                                            <button key={v} onClick={() => update('q6_hasIssue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q6_hasIssue === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>
+                                                                {v}
+                                                            </button>
+                                                        ))}
+                                                    </div>
+                                                    {(data.q6_hasIssue === '是' || data.q6_hasIssue === '無法丈量') && (
+                                                        <input type="text" className="full-width-input" placeholder="請說明情況" value={data.q6_desc} onChange={e => update('q6_desc', e.target.value)} autoComplete="off" />
+                                                    )}
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">7. 水、電、瓦斯使用是否有異常？</p>
+                                                <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q7_hasIssue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q7_hasIssue === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q7_hasIssue === '是' && (
+                                                    <div className="space-y-4">
+                                                        <div className="grid grid-cols-1 gap-4">{UTILITY_ISSUES.map(i => <div key={i} className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q7_items.includes(i)} label={i} onClick={() => toggleArr('q7_items', i)} /></div>)}</div>
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q7_hasOther} label="其他" onClick={() => update('q7_hasOther', !data.q7_hasOther)} />{data.q7_hasOther && <input type="text" className="full-width-input" value={data.q7_otherDesc} onChange={e => update('q7_otherDesc', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                             )}
+
+                             {/* Step 3 */}
+                             {activeStep === 3 && (
+                                <div className="space-y-8 animate-in fade-in slide-in-from-right duration-300">
+                                    <h3 className="text-2xl font-black text-sky-800 border-l-8 border-sky-500 pl-4">{type === 'land' ? '第三步：重要環境設施' : '第三步：公共設施與車位'}</h3>
+                                    
+                                    {type === 'land' ? (
+                                        <>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                                                <div className="flex justify-between items-center border-b pb-4">
+                                                    <p className="text-xl font-black text-slate-800">6. 重要環境設施</p>
+                                                    <label className={`flex items-center justify-center space-x-3 cursor-pointer px-4 py-3 rounded-xl border-2 transition-all ${data.q16_noFacilities ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'}`}>
+                                                        <input type="checkbox" className="w-6 h-6 accent-white" checked={data.q16_noFacilities} onChange={() => update('q16_noFacilities', !data.q16_noFacilities)} />
+                                                        <span className="font-black text-lg">無重要環境設施</span>
+                                                    </label>
+                                                </div>
+                                                <div className="warning-box text-lg w-full text-center p-2 bg-red-50">※內政部於104年10月新版不動產說明書中，房仲業者須對於受託銷售之不動產，應調查周邊半徑300公尺範圍內之重要環境設施</div>
+                                                <div className={`space-y-6 ${data.q16_noFacilities ? 'disabled-section' : ''}`}>
+                                                    {ENV_CATEGORIES.map((cat, idx) => (
+                                                        <div key={idx} className="bg-slate-50 p-6 rounded-xl">
+                                                            <p className="font-black text-slate-600 mb-4 border-b pb-2 text-xl">{cat.title}</p>
+                                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{cat.items.map(item => (<CheckBox key={item} checked={data.q16_items.includes(item)} label={item} onClick={() => toggleArr('q16_items', item)} size="w-8 h-8" />))}</div>
+                                                        </div>
+                                                    ))}
+                                                    <div className="bg-slate-50 p-6 rounded-xl"><CheckBox checked={data.q16_hasOther} label="其他" onClick={() => update('q16_hasOther', !data.q16_hasOther)} />{data.q16_hasOther && (<input type="text" className="full-width-input" value={data.q16_other} onChange={e => update('q16_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div>
+                                                </div>
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">7. 本案或周圍是否有特別注意的事項？</p>
+                                                <div className="flex gap-4">{['否', '是'].map(v => (<button key={v} onClick={() => update('land_q7_issue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.land_q7_issue === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>))}</div>
+                                                {data.land_q7_issue === '是' && (<input type="text" className="full-width-input" value={data.land_q7_desc} onChange={e => update('land_q7_desc', e.target.value)} placeholder="請填寫說明..." autoComplete="off" />)}
+                                            </div>
+                                            
+                                            {/* Land Completion Message */}
+                                            <div className="p-10 bg-green-50 border-2 border-green-200 rounded-3xl text-center shadow-lg mb-6 mt-8">
+                                                <div className="mb-4"><i data-lucide="check-circle-2" className="w-20 h-20 text-green-600 mx-auto"></i></div>
+                                                <p className="text-2xl font-black text-green-800 leading-relaxed mb-4">土地現況調查表填寫完成！</p>
+                                                <p className="text-lg text-green-700 font-bold">請檢查右側預覽畫面是否正確，確認無誤後即可匯出檔案。</p>
+                                                <div className="lg:hidden mt-6">
+                                                     <button onClick={() => handlePreviewRequest('preview')} className="w-full py-4 bg-sky-600 text-white rounded-2xl font-black text-xl shadow-lg hover:bg-sky-700 transition active:scale-95 flex items-center justify-center gap-2">
+                                                        <i data-lucide="arrow-right-circle" className="w-6 h-6"></i>
+                                                        前往預覽與匯出
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800 underline underline-offset-4 decoration-4 decoration-sky-200">公共設施情況</p>
+                                                <div className="flex gap-4">{['有公共設施', '無公共設施', '無法進入'].map(v => <button key={v} onClick={() => update('publicFacilities', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.publicFacilities === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.publicFacilities === '無法進入' && (<input type="text" className="full-width-input" value={data.publicFacilitiesReason} onChange={e => update('publicFacilitiesReason', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800 leading-snug">8. 電(樓)梯間、公共地下室等現況是否有龜裂、鋼筋外露、水泥塊剝落等情況？</p>
+                                                <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q8_stairIssue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q8_stairIssue === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q8_stairIssue === '是' && (<input type="text" className="full-width-input" value={data.q8_stairDesc} onChange={e => update('q8_stairDesc', e.target.value)} placeholder="請輸入原因說明..." autoComplete="off" />)}
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                <p className="text-2xl font-black text-slate-800">9. 本案或本社區是否有須注意的設施？</p>
+                                                <div className="flex gap-4 mb-2">{['否', '是'].map(v => <button key={v} onClick={() => update('q9_hasIssue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q9_hasIssue === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q9_hasIssue === '是' && (
+                                                    <div className="grid grid-cols-1 gap-4 animate-in fade-in slide-in-from-top-1">
+                                                        {FACILITY_OPTIONS.map(opt => <div key={opt} className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q9_items.includes(opt)} label={opt} onClick={() => toggleArr('q9_items', opt)} /></div>)}
+                                                        <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q9_hasOther} label="其他" onClick={() => update('q9_hasOther', !data.q9_hasOther)} />{data.q9_hasOther && (<input type="text" className="full-width-input bg-white" value={data.q9_otherDesc} onChange={e => update('q9_otherDesc', e.target.value)} placeholder="其他..." autoComplete="off" />)}</div>
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-5">
+                                                <div className="flex justify-between items-center border-b pb-4">
+                                                    <p className="text-2xl font-black text-slate-800">10. 車位資訊</p>
+                                                    <label className={`flex items-center justify-center space-x-3 cursor-pointer px-6 py-4 rounded-xl border-2 transition-all ${data.q10_noParking ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'}`}><input type="checkbox" className="w-8 h-8 accent-white" checked={data.q10_noParking} onChange={() => update('q10_noParking', !data.q10_noParking)} /><span className="font-bold text-lg">無車位</span></label>
+                                                </div>
+                                                <div className={`space-y-8 ${data.q10_noParking ? 'disabled-section' : ''}`}>
+                                                    <div>
+                                                        <p className="text-xl font-bold text-slate-600 mb-2">停車方式：</p>
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            {['坡道平面', '坡道機械', '升降平面', '一樓平面', '塔式車位', '升降機械'].map(type => (
+                                                                <div key={type} className="bg-slate-50 p-4 rounded-xl">
+                                                                    <CheckBox checked={data.q10_parkTypes.includes(type)} label={type} onClick={() => toggleArr('q10_parkTypes', type)} />
+                                                                    {type.includes("機械") && data.q10_parkTypes.includes(type) && (<div className="flex gap-2 mt-4 ml-12">{['上層', '中層', '下層'].map(loc => (<label key={loc} className="flex items-center space-x-2 cursor-pointer bg-white px-4 py-2 rounded border border-slate-300"><input type="radio" className="w-5 h-5 accent-sky-600" name={type==="坡道機械"?"rampMech":"liftMech"} checked={(type==="坡道機械"?data.q10_rampMechLoc:data.q10_liftMechLoc) === loc} onChange={() => update(type==="坡道機械"?'q10_rampMechLoc':'q10_liftMechLoc', loc)} /><span className="text-lg font-bold">{loc}</span></label>))}</div>)}
+                                                                </div>
+                                                            ))}
+                                                            <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q10_hasParkTypeOther} label="其他" onClick={() => update('q10_hasParkTypeOther', !data.q10_hasParkTypeOther)} />{data.q10_hasParkTypeOther && <input type="text" className="full-width-input" value={data.q10_parkTypeOther} onChange={e => update('q10_parkTypeOther', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                        </div>
+                                                    </div>
+                                                    {/* ... (Existing car parking fields from previous code) ... */}
+                                                    <div>
+                                                        <p className="text-xl font-bold text-slate-600 mb-2">車位編號：</p>
+                                                        <div className="flex gap-4 items-center mb-4">
+                                                            <label className="flex items-center space-x-2 cursor-pointer bg-slate-50 px-4 py-3 rounded-lg border">
+                                                                <input type="radio" name="q10_pnum" className="w-6 h-6 accent-sky-600" checked={data.q10_parkingNumberType === 'number'} onChange={() => update('q10_parkingNumberType', 'number')} />
+                                                                <span className="font-bold text-xl">編號</span>
+                                                            </label>
+                                                            <input type="text" className="border-b-2 border-slate-300 outline-none text-center bg-transparent focus:border-sky-600 transition-colors w-32 text-xl py-2" disabled={data.q10_parkingNumberType !== 'number'} value={data.q10_parkingNumberVal} onChange={e => update('q10_parkingNumberVal', e.target.value)} autoComplete="off" />
+                                                            <label className="flex items-center space-x-2 cursor-pointer bg-slate-50 px-4 py-3 rounded-lg border">
+                                                                <input type="radio" name="q10_pnum" className="w-6 h-6 accent-sky-600" checked={data.q10_parkingNumberType === 'none'} onChange={() => { update('q10_parkingNumberType', 'none'); update('q10_parkingNumberVal', ''); }} />
+                                                                <span className="font-bold text-xl">無車位編號</span>
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xl font-bold text-slate-600 mb-2">汽車車位使用情況：</p>
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            {CAR_USAGE_OPTS.map(u => <div key={u} className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q10_carUsage.includes(u)} label={u} onClick={() => toggleArr('q10_carUsage', u)} /></div>)}
+                                                            <div className="bg-slate-50 p-4 rounded-xl">
+                                                                <CheckBox checked={data.q10_carUsage.includes("須固定抽籤")} label="須固定抽籤" onClick={() => toggleArr('q10_carUsage', "須固定抽籤")} />
+                                                                {data.q10_carUsage.includes("須固定抽籤") && (<div className="ml-12 flex items-center gap-2 mt-2 font-bold text-lg">每 <input type="number" className="w-20 border rounded p-2 text-center" value={data.q10_carLotteryMonth} onChange={e => update('q10_carLotteryMonth', e.target.value)} /> 月抽籤一次</div>)}
+                                                            </div>
+                                                            <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q10_hasCarUsageOther} label="其他" onClick={() => update('q10_hasCarUsageOther', !data.q10_hasCarUsageOther)} />{data.q10_hasCarUsageOther && <input type="text" className="full-width-input" value={data.q10_carUsageOther} onChange={e => update('q10_carUsageOther', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="bg-blue-50 p-6 rounded-2xl space-y-4">
+                                                        <p className="font-black text-xl">汽車車位尺寸 (公尺)</p>
+                                                        <div className="flex gap-4"><input type="text" placeholder="長" className="w-1/3 p-3 rounded border text-lg" value={data.q10_dimL} onChange={e => update('q10_dimL', e.target.value)} /><input type="text" placeholder="寬" className="w-1/3 p-3 rounded border text-lg" value={data.q10_dimW} onChange={e => update('q10_dimW', e.target.value)} /><input type="text" placeholder="高" className="w-1/3 p-3 rounded border text-lg" value={data.q10_dimH} onChange={e => update('q10_dimH', e.target.value)} /></div>
+                                                        <p className="font-black text-xl mt-2">機械載重 (公斤)</p><input type="text" className="w-full p-3 rounded border text-lg" value={data.q10_mechWeight} onChange={e => update('q10_mechWeight', e.target.value)} />
+                                                        <p className="font-black text-xl mt-2">車道出入口高度 (公尺)</p><input type="text" className="w-full p-3 rounded border text-lg" value={data.q10_entryHeight} onChange={e => update('q10_entryHeight', e.target.value)} />
+                                                    </div>
+                                                    <div>
+                                                        <p className="text-xl font-bold text-slate-600 mb-2">機車位勾選：</p>
+                                                        <div className="grid grid-cols-1 gap-3">
+                                                            <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q10_motoUsage.includes("固定位置使用")} label="固定位置使用" onClick={() => toggleArr('q10_motoUsage', "固定位置使用")} /></div>
+                                                            <div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q10_hasMotoUsageOther} label="其他" onClick={() => update('q10_hasMotoUsageOther', !data.q10_hasMotoUsageOther)} />{data.q10_hasMotoUsageOther && <input type="text" className="full-width-input" value={data.q10_motoUsageOther} onChange={e => update('q10_motoUsageOther', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div>
+                                                        </div>
+                                                    </div>
+                                                    <div className="border-t pt-6">
+                                                        <p className="text-xl font-bold text-slate-600 mb-4">社區是否有充電樁？</p>
+                                                        <div className="flex gap-6 mb-4">
+                                                            {['有', '無'].map(o => <label key={o} className="flex items-center space-x-3 cursor-pointer bg-white px-6 py-3 rounded-xl border border-slate-200"><input type="radio" name="charge" className="w-6 h-6 accent-sky-600" checked={data.q10_charging === o} onChange={() => update('q10_charging', o)} /><span className="font-bold text-xl">{o}</span></label>)}
+                                                            <label className="flex items-center space-x-3 cursor-pointer bg-white px-6 py-3 rounded-xl border border-slate-200"><input type="radio" name="charge" className="w-6 h-6 accent-sky-600" checked={data.q10_charging === '其他'} onChange={() => update('q10_charging', '其他')} /><span className="font-bold text-xl">其他</span></label>
+                                                        </div>
+                                                        {data.q10_charging === '其他' && <input type="text" className="full-width-input" value={data.q10_chargingOther} onChange={e => update('q10_chargingOther', e.target.value)} placeholder="請說明情況" autoComplete="off" />}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className={`bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6 ${data.q10_noParking ? 'disabled-section' : ''}`}>
+                                                <p className="text-2xl font-black text-slate-800">11. 車位使用是否異常？</p>
+                                                <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q11_hasIssue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q11_hasIssue === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q11_hasIssue === '是' && (<div className="space-y-4">{Q11_OPTS.map(i => <div key={i} className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q11_items.includes(i)} label={i} onClick={() => toggleArr('q11_items', i)} /></div>)}<div className="bg-slate-50 p-4 rounded-xl"><CheckBox checked={data.q11_hasOther} label="其他" onClick={() => update('q11_hasOther', !data.q11_hasOther)} />{data.q11_hasOther && <input type="text" className="full-width-input" value={data.q11_other} onChange={e => update('q11_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />}</div></div>)}
+                                            </div>
+                                            <div className={`bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6 ${data.q10_noParking ? 'disabled-section' : ''}`}>
+                                                <p className="text-2xl font-black text-slate-800">12. 車位現況補充</p>
+                                                <div className="warning-box text-lg w-full text-center p-2 bg-red-50">※如車格位置有其他孔蓋、排風機、電箱或其他注意事項？</div>
+                                                <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q12_hasNote', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q12_hasNote === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                {data.q12_hasNote === '是' && (<div className="bg-slate-50 p-4 rounded-xl"><span className="font-bold text-xl">其他：</span><input type="text" className="full-width-input" value={data.q12_note} onChange={e => update('q12_note', e.target.value)} placeholder="請說明情況" autoComplete="off" /></div>)}
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                             )}
+
+                             {/* Step 4 */}
+                             {activeStep === 4 && (
+                                <div className="space-y-10 animate-in fade-in slide-in-from-right duration-300">
+                                    <h3 className="text-3xl font-black text-sky-800 border-l-8 border-sky-500 pl-4">{type === 'land' ? '第四步：填寫完成' : '第四步：外觀、環境與其他須注意事項'}</h3>
+                                    {type === 'land' ? (
+                                        <div className="p-10 bg-green-50 border-2 border-green-200 rounded-3xl text-center shadow-lg mb-6">
+                                            <div className="mb-4"><i data-lucide="check-circle-2" className="w-20 h-20 text-green-600 mx-auto"></i></div>
+                                            <p className="text-2xl font-black text-green-800 leading-relaxed mb-4">土地現況調查表填寫完成！</p>
+                                            <p className="text-lg text-green-700 font-bold">請檢查右側預覽畫面是否正確，確認無誤後即可匯出檔案。</p>
+                                        </div>
+                                    ) : (
+                                        <>
+                                            <div className="bg-blue-50 p-6 rounded-3xl border-2 border-blue-100">
+                                                <label className="flex items-center space-x-4 cursor-pointer p-2"><input type="checkbox" className="w-8 h-8 accent-blue-600 rounded" checked={data.isNotFirstFloor} onChange={() => update('isNotFirstFloor', !data.isNotFirstFloor)} /><span className="text-slate-800 font-black text-2xl">並非一樓、透天、店面、別墅等</span></label>
+                                            </div>
+                                            <div className={`space-y-8 ${data.isNotFirstFloor ? 'disabled-section' : ''}`}>
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                    <p className="text-2xl font-black text-slate-800">13. 一樓前方空地、後方空地(防火巷)或騎樓部分是否有被佔用情況？</p>
+                                                    <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q13_occupancy', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q13_occupancy === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                    {data.q13_occupancy === '是' && <input type="text" className="full-width-input" value={data.q13_desc} onChange={e => update('q13_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />}
+                                                </div>
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                    <p className="text-2xl font-black text-slate-800">14. 進出須經他人土地</p>
+                                                    <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q14_access', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q14_access === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                    {data.q14_access === '是' && (<div className="flex gap-2 items-center bg-slate-50 p-4 rounded-xl"><input className="w-24 p-3 border rounded text-lg" placeholder="段" onChange={e => update('q14_section', e.target.value)} /> 段<input className="w-24 p-3 border rounded text-lg" placeholder="小段" onChange={e => update('q14_subSection', e.target.value)} /> 小段<input className="w-full p-3 border rounded text-lg" placeholder="地號" onChange={e => update('q14_number', e.target.value)} /> 地號</div>)}
+                                                </div>
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                    <p className="text-2xl font-black text-slate-800">15. 增建佔用他人土地</p>
+                                                    <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q15_occupy', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q15_occupy === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                    {data.q15_occupy === '是' && (<div className="flex gap-2 items-center bg-slate-50 p-4 rounded-xl"><input className="w-24 p-3 border rounded text-lg" placeholder="段" onChange={e => update('q15_section', e.target.value)} /> 段<input className="w-24 p-3 border rounded text-lg" placeholder="小段" onChange={e => update('q15_subSection', e.target.value)} /> 小段<input className="w-full p-3 border rounded text-lg" placeholder="地號" onChange={e => update('q15_number', e.target.value)} /> 地號</div>)}
+                                                </div>
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-4">
+                                                    <div className="flex justify-between items-center border-b pb-4">
+                                                        <p className="text-xl font-black text-slate-800">16. 重要環境設施</p>
+                                                        <label className={`flex items-center justify-center space-x-3 cursor-pointer px-4 py-3 rounded-xl border-2 transition-all ${data.q16_noFacilities ? 'bg-slate-800 text-white border-slate-800' : 'bg-white border-slate-300 text-slate-500 hover:bg-slate-50'}`}>
+                                                            <input type="checkbox" className="w-6 h-6 accent-white" checked={data.q16_noFacilities} onChange={() => update('q16_noFacilities', !data.q16_noFacilities)} />
+                                                            <span className="font-black text-lg">無重要環境設施</span>
+                                                        </label>
+                                                    </div>
+                                                    <div className="warning-box text-lg w-full text-center p-2 bg-red-50">※內政部於104年10月新版不動產說明書中，房仲業者須對於受託銷售之不動產，應調查周邊半徑300公尺範圍內之重要環境設施</div>
+                                                    <div className={`space-y-6 ${data.q16_noFacilities ? 'disabled-section' : ''}`}>
+                                                        {ENV_CATEGORIES.map((cat, idx) => (
+                                                            <div key={idx} className="bg-slate-50 p-6 rounded-xl">
+                                                                <p className="font-black text-slate-600 mb-4 border-b pb-2 text-xl">{cat.title}</p>
+                                                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">{cat.items.map(item => (<CheckBox key={item} checked={data.q16_items.includes(item)} label={item} onClick={() => toggleArr('q16_items', item)} size="w-8 h-8" />))}</div>
+                                                            </div>
+                                                        ))}
+                                                        <div className="bg-slate-50 p-6 rounded-xl"><CheckBox checked={data.q16_hasOther} label="其他" onClick={() => update('q16_hasOther', !data.q16_hasOther)} />{data.q16_hasOther && (<input type="text" className="full-width-input" value={data.q16_other} onChange={e => update('q16_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div>
+                                                    </div>
+                                                </div>
+                                                <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
+                                                    <p className="text-2xl font-black text-slate-800">17. 本案或本社區是否有特別注意的事項？</p>
+                                                    <div className="warning-box text-lg w-full text-center p-2 bg-red-50">※如鄰損、白蟻、危險建築、新聞事件、糾紛、車道出入周圍有菜市場/夜市須注意</div>
+                                                    <div className="flex gap-4">{['否', '是'].map(v => <button key={v} onClick={() => update('q17_issue', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.q17_issue === v ? 'bg-sky-600 text-white' : 'bg-slate-100 text-slate-500'}`}>{v}</button>)}</div>
+                                                    {data.q17_issue === '是' && <input type="text" className="full-width-input" value={data.q17_desc} onChange={e => update('q17_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />}
+                                                </div>
+                                                
+                                                <div className="p-6 bg-green-50 border-2 border-green-200 rounded-2xl text-center shadow-sm mb-6">
+                                                    <p className="text-xl font-black text-green-700 leading-relaxed">題目已全部填完，可到預覽/匯出檢視<br/>若沒填則無法到預覽/匯出產出JPG檔與PDF文件</p>
+                                                </div>
+                                                
+                                                <div className="lg:hidden">
+                                                     <button onClick={() => handlePreviewRequest('preview')} className="w-full py-4 bg-sky-600 text-white rounded-2xl font-black text-xl shadow-lg hover:bg-sky-700 transition active:scale-95 flex items-center justify-center gap-2">
+                                                        <i data-lucide="arrow-right-circle" className="w-6 h-6"></i>
+                                                        前往預覽與匯出
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                             )}
+                        </div>
+
+                        {/* Pagination */}
+                        <div className="no-print bg-white border-t border-slate-200 p-4 pb-24 lg:pb-4 flex flex-col items-center justify-center shrink-0 z-20">
+                            <div className="w-full max-w-[300px] flex items-center gap-2 h-6">
+                                {[1, 2, 3, 4].slice(0, type === 'land' ? 3 : 4).map(s => (
+                                    <button 
+                                        key={s} 
+                                        onClick={() => setActiveStep(s)} 
+                                        className={`h-2 flex-1 rounded-full transition-all duration-300 relative group ${activeStep >= s ? 'bg-sky-600' : 'bg-slate-200 hover:bg-slate-300'}`}
+                                        aria-label={`第 ${s} 步`}
+                                    >
+                                        <div className="absolute inset-0 -m-3"></div>
+                                    </button>
+                                ))}
+                            </div>
+                            <div className="mt-2 text-xs font-bold text-slate-400">
+                                點選上方進度條切換頁面 ({activeStep}/{type === 'land' ? 3 : 4})
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Right Column: Preview (Same as provided code) */}
+                    <div className={`flex-grow bg-slate-400/50 p-4 lg:p-10 overflow-y-auto flex flex-col items-center absolute lg:relative inset-0 z-30 transition-transform duration-300 ${mobileTab === 'preview' ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'} pb-32 lg:pb-10`}>
+                        <div className="lg:hidden w-full bg-yellow-100 text-yellow-800 px-4 py-3 rounded-xl mb-4 text-base font-bold text-center shadow-sm"><i data-lucide="info" className="inline w-5 h-5 mr-1 align-text-bottom"></i> 預覽模式：{previewScale < 1 ? '已自動切換至手機版面' : '左右滑動檢視完整表格'}</div>
+                        <div className="w-full max-w-[210mm] flex mb-6 bg-white rounded-xl shadow-md p-1">
+                            <button onClick={() => setPreviewPage(1)} className={`flex-1 py-3 rounded-lg font-bold text-lg transition-all ${previewPage === 1 ? 'bg-sky-600 text-white shadow' : 'text-slate-500 hover:bg-slate-100'}`}>第一頁 (正面)</button>
+                            <button onClick={() => setPreviewPage(2)} className={`flex-1 py-3 rounded-lg font-bold text-lg transition-all ${previewPage === 2 ? 'bg-sky-600 text-white shadow' : 'text-slate-500 hover:bg-slate-100'}`}>第二頁 (背面)</button>
+                        </div>
+
+                        {/* Page 1 (Front) */}
+                        <div className={`w-full flex justify-center mb-6 transition-opacity duration-300 ${previewPage === 1 || exporting ? 'block' : 'hidden'} ${exporting ? 'opacity-100' : ''}`}>
+                            <div className="preview-scroll-container">
+                                <div ref={page1Ref} className="a4-page shadow-2xl shrink-0" style={{ transform: `scale(${exporting ? 1 : previewScale})`, marginBottom: `${exporting ? 0 : (1 - previewScale) * -1123}px` }}> {/* 縮放並調整下方空白 */}
+                                    <div className="flex-grow">
+                                        <div className="flex justify-center items-end border-b-4 border-black pb-4 mb-4 relative w-full">
+                                            <h1 className="text-3xl font-black tracking-[0.2em] text-center w-full">幸福家不動產－業務版現況調查表</h1>
+                                            <div className="absolute right-0 bottom-0 text-[10px] font-bold text-slate-400">【正面】{data.version}</div>
+                                        </div>
+                                        <table className="excel-table mb-4 relative z-10 w-full"><tbody><tr><td className="bg-gray-label w-[12%]">案名</td><td colSpan="5" className="font-black text-lg">{data.caseName}</td><td className="bg-gray-label w-[10%]">店名</td><td className="w-[15%]">{data.storeName}</td><td className="bg-gray-label w-[8%]">業務</td><td className="w-[12%]">{data.agentName}</td></tr><tr><td className="bg-gray-label">{type === 'land' ? '坐落' : '地址'}</td><td colSpan="5" className="font-bold">{data.address}</td><td className="bg-gray-label">日期</td><td colSpan="3" className="text-center font-mono">{data.fillDate}</td></tr></tbody></table>
+                                        <div className="bg-black text-white px-3 py-1 text-sm font-black mb-1 relative z-10 self-start">【觀察位置：{type === 'land' ? '現場情況 - 1' : '內部調查情況 - 1'}】</div>
+                                        <table className="excel-table mb-2 relative z-10 w-full">
+                                            <tbody>
+                                                <tr><td colSpan="10" className="py-2 px-4"><div className="flex items-center space-x-6 mb-1"><span className="font-black text-[15px]">現況：</span><PreviewResult checked={data.access === '可進入'} label="可進入" /><PreviewResult checked={data.access === '不可進入'} label="不可進入：" /></div><div className="flex flex-wrap items-center gap-x-5 pl-14">{(type === 'land' ? ACCESS_SUB_OPTIONS_LAND : ACCESS_SUB_OPTIONS).map(opt => (<PreviewResult key={opt} checked={data.accessType.includes(opt)} label={opt + (opt === "其他" ? '：' : '')} suffix={opt==="其他" && data.accessType.includes("其他") ? data.accessOther : ""} />))}</div>{data.access === '不可進入' && <div className="pl-14 warning-box">{type === 'land' ? '若為上述情況，建議待找可進行調查時間點時再進行完整調查' : '若為上述情況，建議待整屋搬空/清空後再進行完整調查'}</div>}</td></tr>
+                                                <tr><td className="w-10 text-center bg-gray-50 font-black">否</td><td colSpan="9" className="py-1 font-bold bg-gray-100 text-center">說明 / 檢查項目</td></tr>
+                                                
+                                                {/* Preview Logic Mapping (Same as original) */}
+                                                {type === 'land' ? (
+                                                    <>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.land_road_smooth === '是' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">1. 道路與進出動線是否順暢</div><div className="flex items-center gap-4"><PreviewResult checked={data.land_road_smooth === '否'} label="否，其他：" suffix={data.land_road_desc} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">2. 臨路的情況</div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">所有權：</span><PreviewResult checked={data.land_road_ownership === '公有'} label="公有" /><PreviewResult checked={data.land_road_ownership === '私有'} label="私有" /></div>{data.land_road_ownership && (<div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">材質：</span>{['柏油路', '水泥路', '泥巴路'].map(m => (<PreviewResult key={m} checked={data.land_road_material === m} label={m} />))}<PreviewResult checked={data.land_road_material === '其他'} label="其他說明：" suffix={data.land_road_material_other} /></div>)}<div className="flex flex-wrap gap-x-6 gap-y-1 items-center mt-1"><span className="font-bold">前方有無水溝：</span><PreviewResult checked={data.land_has_ditch === '是'} label="是" /><PreviewResult checked={data.land_has_ditch === '否'} label="否" /><PreviewResult checked={data.land_has_ditch === '其他'} label="其他說明：" suffix={data.land_has_ditch_other} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 items-center mt-1"><span className="font-bold">與道路有高低差：</span><PreviewResult checked={data.land_has_height_diff === '是'} label="是" /><PreviewResult checked={data.land_has_height_diff === '否'} label="否" /><PreviewResult checked={data.land_has_height_diff === '其他'} label="其他說明：" suffix={data.land_has_height_diff_other} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">3. 界址與佔用</div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">有無界樁：</span><PreviewResult checked={data.land_boundary_markers === '是'} label="是" /><PreviewResult checked={data.land_boundary_markers === '否'} label="否" /><PreviewResult checked={data.land_boundary_markers === '其他'} label="其他：" suffix={data.land_boundary_markers_desc} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">有無被越界佔用：</span><PreviewResult checked={data.land_boundary_encroached === '是'} label="是" /><PreviewResult checked={data.land_boundary_encroached === '否'} label="否" /><PreviewResult checked={data.land_boundary_encroached === '其他'} label="其他：" suffix={data.land_boundary_encroached_desc} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 items-center"><span className="font-bold">有無佔用鄰地：</span><PreviewResult checked={data.land_boundary_encroaching === '是'} label="是" /><PreviewResult checked={data.land_boundary_encroaching === '否'} label="否" /><PreviewResult checked={data.land_boundary_encroaching === '疑似/其他'} label="疑似/其他：" suffix={data.land_boundary_encroaching_desc} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.land_q1_hasBuilding === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">4. 土地上方是否有其他物？</div><div className="warning-box">※如有請在下方勾選詳細情況</div><div className="flex flex-wrap gap-x-6 gap-y-1 mt-1">
+                                                            {/* New Preview Logic for Legal Building */}
+                                                            <div className="inline-block mr-4 mb-1 border border-black p-1">
+                                                                <span className="font-bold">地上建物：</span>
+                                                                <span className="mr-2">{data.land_q1_isLegal ? (data.land_q1_isLegal === '是' ? '合法' : '不合法') : '未填'}</span>
+                                                                {data.land_q1_isLegal && (
+                                                                    <span className="text-xs">(有租客/佔有人: {data.land_q1_unregistered_hasOccupant ? '是' : '否'})</span>
+                                                                )}
+                                                            </div>
+                                                            {LAND_Q1_OPTIONS.map(i => (<div key={i} className="inline-block mr-4 mb-1"><PreviewResult checked={data.land_q1_items.includes(i)} label={i} suffix={(i==="農作物與植栽" && data.land_q1_items.includes("農作物與植栽") ? ` (待${data.land_q1_harvestMonth}月收成${data.land_q1_cropsDesc ? ', ' + data.land_q1_cropsDesc : ''})` : "") + (i==="宗教與殯葬設施" && data.land_q1_items.includes("宗教與殯葬設施") ? ` (${data.land_q1_religious_details.join(',')})` : "")} />{i === "廢棄物" && data.land_q1_items.includes("廢棄物") && (<div className="warning-box text-[10px] mt-1 font-bold text-red-600">※有無被回填不明土壤(顏色怪異、有化學味)？若埋有毒廢棄物，需做土壤檢測</div>)}</div>))}<PreviewResult checked={data.land_q1_hasOther} label="其他：" suffix={data.land_q1_other} /></div></td></tr>
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.q1_hasExt === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">1. 是否有增建情況？</div><div className="warning-box">※如有增建請繪製格局圖時，標示增建情況及位置</div><div className="flex flex-wrap gap-x-6 gap-y-1 mt-1">{EXT_LIST.map(i => (<PreviewResult key={i} checked={data.q1_items.includes(i)} label={i} suffix={i==="地下室增建" && data.q1_items.includes("地下室增建") ? `(內含隔間:${data.q1_basementPartition?'V':''})` : ""} />))}<PreviewResult checked={data.q1_hasOther} label="其他：" suffix={data.q1_other} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.q2_hasOccupancy === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">2. 建物或增建部分是否有占用鄰地、道路用地或他人建物占用本案之土地？</div><div className="warning-box">※請先至全國土地使用分區資訊查詢系統確認本案分區與周圍，再判斷是否須調閱土地使用分區</div><div className="flex gap-x-6 mt-1 items-center"><PreviewResult checked={data.q2_hasOccupancy === '是'} label="是" /><PreviewResult checked={data.q2_hasOccupancy === '疑似'} label="疑似" />{data.q2_hasOccupancy !== '否' && <span className="font-bold text-xs flex-grow">{data.q2_desc}</span>}</div>{data.q2_hasOccupancy === '疑似' && <div className="warning-box">※如糾紛、爭議、接獲拆除通知或公告拆除</div>}</td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.q3_hasLeak === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">3. 是否有滲漏水、壁癌等情況？</div><div className="flex flex-wrap gap-x-4 mb-1"><PreviewResult checked={data.q3_hasLeak === '是'} label="有：" />{LEAK_LOCATIONS.map(loc => <PreviewResult key={loc} checked={data.q3_hasLeak === '是' && data.q3_locations.includes(loc)} label={loc} />)}</div><div className="flex items-center gap-2 mb-1"><PreviewResult checked={data.q3_hasOther} label="其他：" suffix={data.q3_other} /></div><div className="flex items-center gap-2 mb-1"><PreviewResult checked={data.q3_suspected} label="疑似有滲漏水、壁癌，位置說明：" suffix={data.q3_suspectedDesc} /></div><PreviewResult checked={data.q3_ceilingWrapped} label="全屋天花板包覆，無法觀察" /></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.q4_hasIssue === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">4. 結構牆面是否有結構安全之虞的瑕疵</div><div className="warning-box">※可從浴廁、廚房通風孔/維修孔、輕鋼架推開檢查</div><div className="flex flex-wrap gap-x-4 gap-y-1 mt-1">{STRUCTURAL_ISSUES.map(i => <PreviewResult key={i} checked={data.q4_items.includes(i)} label={i} />)}</div><div className="space-y-1 mt-1"><PreviewResult checked={data.q4_hasIssue === '是' && data.q4_hasOther} label="其他：" suffix={data.q4_otherDesc} /><PreviewResult checked={data.q4_hasIssue === '是' && data.q4_suspected} label="疑似須注意，位置說明：" suffix={data.q4_suspectedDesc} /><PreviewResult checked={data.q4_hasIssue === '是' && data.q4_ceilingWrapped} label="全屋天花板包覆，無法觀察" /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.q5_hasTilt === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">5. 是否有傾斜情況？</div><div className="flex items-center gap-4"><PreviewResult checked={data.q5_hasTilt === '是'} label="是" suffix={data.q5_desc} /><PreviewResult checked={data.q5_hasTilt === '疑似'} label="疑似" suffix={data.q5_suspectedDesc} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.q6_hasIssue === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">6. 建物測量成果圖是否與現場長寬不符？建物面積是否有明顯短少之情況？</div><div className="warning-box">※可簡易測量最長/短/寬/窄之距離 (因牆面厚度，測量的長或寬與建物成果圖尺寸落差30公分內為合理範圍內)</div>
+                                                        <div className="flex items-center gap-2">
+                                                            <PreviewResult checked={data.q6_hasIssue === '是'} label="是，其他：" suffix={data.q6_desc} />
+                                                            <PreviewResult checked={data.q6_hasIssue === '無法丈量'} label="無法丈量：" suffix={data.q6_desc} />
+                                                        </div>
+                                                        </td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.q7_hasIssue === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">7. 水、電、瓦斯使用是否有異常？</div><div className="flex flex-wrap gap-x-6 mb-1">{UTILITY_ISSUES.map(item => <PreviewResult key={item} checked={data.q7_hasIssue === '是' && data.q7_items.includes(item)} label={item} />)}</div><div className="flex items-center"><PreviewResult checked={data.q7_hasOther} label="其他：" suffix={data.q7_otherDesc} /></div></td></tr>
+                                                        <tr><td colSpan="10" className="py-2 px-4"><div className="font-black mb-1 text-[12px] underline underline-offset-4 decoration-2 tracking-wider">公共設施情況</div><div className="flex items-center space-x-8 mb-1"><PreviewResult checked={data.publicFacilities === '有公共設施'} label="有公共設施" /><PreviewResult checked={data.publicFacilities === '無公共設施'} label="無公共設施" /><PreviewResult checked={data.publicFacilities === '無法進入'} label="無法進入：原因" suffix={data.publicFacilitiesReason} /></div>{data.publicFacilities === '無法進入' && (<div className="ml-14 font-black text-[10px] min-h-[1rem] py-0.5">{data.publicFacilitiesReason}</div>)}</td></tr>
+                                                    </>
+                                                )}
+                                            </tbody>
+                                        </table>
+                                        <div className="mt-auto w-full pt-4">
+                                            <div className="flex justify-between items-end border-t-4 border-black pt-2">
+                                                <div className="space-y-4">
+                                                    <p className="text-lg font-black underline underline-offset-4">調查業務人員簽章：</p>
+                                                    <div className="w-[200px] h-6 border-b-2 border-slate-300"></div>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-[9px] text-slate-400 mb-0.5 font-bold italic tracking-tighter">※ 本調查內容僅供公司內部參考，實際應以權狀及產調為準</p>
+                                                    <div className="text-3xl font-black italic tracking-tighter text-sky-500 drop-shadow-sm">幸福家不動產</div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Export Buttons */}
+                        <div className="w-full flex flex-col gap-3 justify-center mt-6 mb-20 lg:mb-0 lg:flex-row">
+                            <button onClick={() => handleExport('jpg')} className="w-full lg:w-auto px-8 py-4 bg-sky-600 text-white rounded-2xl font-black text-xl flex items-center justify-center gap-2 shadow-lg hover:bg-sky-700 transition active:scale-95"><i data-lucide="images" className="w-6 h-6"></i> 匯出 JPG 圖片</button>
+                            <button onClick={() => handleExport('pdf')} className="w-full lg:w-auto px-8 py-4 bg-red-600 text-white rounded-2xl font-black text-xl flex items-center justify-center gap-2 shadow-lg hover:bg-red-700 transition active:scale-95"><i data-lucide="file-text" className="w-6 h-6"></i> 匯出 PDF 文件</button>
+                            <p className="text-center text-sm text-slate-400 lg:hidden px-4">※ 手機請點選匯出後，至「檔案」或「下載項目」查看並儲存影像。</p>
+                        </div>
+                    </div>
+
+                    {/* Mobile Nav */}
+                    <div className="lg:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 flex justify-around items-center pb-safe z-50 shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)]">
+                        <button onClick={() => setMobileTab('edit')} className={`flex flex-col items-center justify-center w-full py-3 ${mobileTab === 'edit' ? 'text-sky-600' : 'text-slate-400'}`}><i data-lucide="edit-3" className="w-7 h-7 mb-1"></i><span className="text-sm font-bold">填寫資料</span></button>
+                        <div className="w-[1px] h-8 bg-slate-200"></div>
+                        <button onClick={() => handlePreviewRequest('preview')} className={`flex flex-col items-center justify-center w-full py-3 ${mobileTab === 'preview' ? 'text-sky-600' : 'text-slate-400'}`}><i data-lucide="eye" className="w-7 h-7 mb-1"></i><span className="text-sm font-bold">預覽/匯出</span></button>
+                    </div>
+
+                    {/* Loading Overlay */}
+                    {exporting && (<div className="fixed inset-0 bg-black/80 z-[100] flex items-center justify-center backdrop-blur-md"><div className="bg-white p-12 rounded-[40px] flex flex-col items-center shadow-2xl animate-in zoom-in-95 duration-200"><div className="w-16 h-16 border-4 border-sky-600 border-t-transparent rounded-full animate-spin mb-6"></div><p className="text-2xl font-black text-slate-800 tracking-wider">正在產生雙面高解析檔案</p><p className="text-slate-400 mt-2 font-bold italic">Processing double-sided documents...</p></div></div>)}
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [systemType, setSystemType] = useState(null); // null = landing, 'house', 'land'
+
+            if (!systemType) {
+                return <LandingPage onSelect={setSystemType} />;
+            }
+
+            return <SurveyForm key={systemType} type={systemType} onBack={() => setSystemType(null)} />;
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
