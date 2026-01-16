@@ -285,12 +285,12 @@
             q17_issue: '', q17_desc: '',
             
             // Land Variables
-            land_road_smooth: '', land_road_desc: '',
+            land_road_smooth: '', land_road_desc: '', // land_road_smooth now stores '否，無異常' or '是，有阻礙'
             land_road_ownership: '', 
             land_road_material: '', land_road_material_other: '',
             land_has_ditch: '', land_has_ditch_other: '',
             land_has_height_diff: '', land_has_height_diff_other: '',
-            land_boundary_markers: '', land_boundary_markers_desc: '',
+            // removed markers variables
             land_boundary_encroached: '', land_boundary_encroached_desc: '',
             land_boundary_encroaching: '', land_boundary_encroaching_desc: '',
             land_q1_hasBuilding: '', land_q1_items: [], 
@@ -300,6 +300,8 @@
             land_q1_hasOther: false, land_q1_other: '',
             land_infra_electricity: '', land_infra_electricity_items: [], land_infra_electricity_other: '',
             land_infra_water: '', land_infra_water_items: [], land_infra_water_other: '',
+            land_infra_other_status: '', // '無' or '有'
+            land_infra_other_facility_desc: '', 
             land_q7_issue: '', land_q7_desc: '',
         };
 
@@ -816,7 +818,9 @@
                 if (!data.address) errors.push(type === 'land' ? "坐落位置" : "標的地址");
 
                 if (type === 'land') {
-                    if (!data.land_road_smooth) errors.push("1. 道路與進出動線是否順暢");
+                    if (!data.land_road_smooth) errors.push("1. 道路與進出動線是否有異常");
+                    if (data.land_road_smooth === '是，有阻礙' && !data.land_road_desc) errors.push("1. 道路與進出動線是否有異常 (阻礙說明)");
+                    
                     if (!data.land_road_ownership) errors.push("2. 臨路的情況 (所有權)");
                     if (!data.land_road_material) errors.push("2. 臨路的情況 (路面材質)");
                     if (data.land_road_material === '其他' && !data.land_road_material_other) errors.push("2. 臨路的情況 (路面材質其他說明)");
@@ -825,19 +829,21 @@
                     if (!data.land_has_height_diff) errors.push("2. 臨路的情況 (土地與道路是否有高低落差)");
                     if (data.land_has_height_diff === '其他' && !data.land_has_height_diff_other) errors.push("2. 臨路的情況 (高低落差其他說明)");
                     
-                    if (!data.land_boundary_markers) errors.push("3. 界址與佔用 (有無界樁)");
-                    if (data.land_boundary_markers === '其他' && !data.land_boundary_markers_desc) errors.push("3. 界址與佔用 (界樁其他)");
-                    if (!data.land_boundary_encroached) errors.push("3. 界址與佔用 (有無被越界佔用)");
-                    if (data.land_boundary_encroached === '其他' && !data.land_boundary_encroached_desc) errors.push("3. 界址與佔用 (越界佔用其他)");
-                    if (!data.land_boundary_encroaching) errors.push("3. 界址與佔用 (有無佔用鄰地)");
-                    if (data.land_boundary_encroaching === '疑似/其他' && !data.land_boundary_encroaching_desc) errors.push("3. 界址與佔用 (佔用鄰地其他)");
+                    // Q3 驗證 (Removed 'markers' checks)
+                    if (!data.land_boundary_encroached) errors.push("3. 是否有佔用/被佔用情況 (有無被越界佔用)");
+                    if (data.land_boundary_encroached === '疑似/其他' && !data.land_boundary_encroached_desc) errors.push("3. 是否有佔用/被佔用情況 (越界佔用其他)");
+                    if (!data.land_boundary_encroaching) errors.push("3. 是否有佔用/被佔用情況 (有無佔用鄰地)");
+                    if (data.land_boundary_encroaching === '疑似/其他' && !data.land_boundary_encroaching_desc) errors.push("3. 是否有佔用/被佔用情況 (佔用鄰地其他)");
                     
                     if (!data.land_q1_hasBuilding) errors.push("4. 土地上方是否有其他物");
 
-                    if (!data.land_infra_electricity) errors.push("5. 公共管線 (電力)");
-                    if (data.land_infra_electricity === '其他' && !data.land_infra_electricity_other) errors.push("5. 公共管線 (電力其他)");
-                    if (!data.land_infra_water) errors.push("5. 公共管線 (水源)");
-                    if (data.land_infra_water === '其他' && !data.land_infra_water_other) errors.push("5. 公共管線 (水源其他)");
+                    if (!data.land_infra_electricity) errors.push("5. 水電或其他設施使用現況 (電力)");
+                    if (data.land_infra_electricity === '其他' && !data.land_infra_electricity_other) errors.push("5. 水電或其他設施使用現況 (電力其他)");
+                    if (!data.land_infra_water) errors.push("5. 水電或其他設施使用現況 (水源)");
+                    if (data.land_infra_water === '其他' && !data.land_infra_water_other) errors.push("5. 水電或其他設施使用現況 (水源其他)");
+                    
+                    if (!data.land_infra_other_status) errors.push("5. 水電或其他設施使用現況 (其他設施勾選)");
+                    if (data.land_infra_other_status === '有' && !data.land_infra_other_facility_desc) errors.push("5. 水電或其他設施使用現況 (其他選項說明)");
 
                     if (!data.q16_noFacilities && data.q16_items.length === 0 && !data.q16_hasOther) {
                          errors.push("6. 重要環境設施 (若無請勾選「無重要環境設施」)");
@@ -1147,11 +1153,11 @@
                                     <h3 className="text-2xl font-black text-sky-800 border-l-8 border-sky-500 pl-4">{type === 'land' ? '第二步：現場情況' : '第二步：內部情況'}</h3>
                                     {type === 'land' ? (
                                         <>
-                                            {/* Land Q1-Q3 same as before... */}
+                                            {/* Land Q1 */}
                                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
-                                                <p className="text-2xl font-black text-slate-800">1. 道路與進出動線是否順暢</p>
-                                                <div className="flex gap-4">{['是', '否'].map(v => (<button key={v} onClick={() => update('land_road_smooth', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.land_road_smooth === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>))}</div>
-                                                {data.land_road_smooth === '否' && (<input type="text" className="full-width-input" value={data.land_road_desc} onChange={e => update('land_road_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
+                                                <p className="text-2xl font-black text-slate-800">1. 道路與進出動線是否有異常</p>
+                                                <div className="flex gap-4">{['否，無異常', '是，有阻礙'].map(v => (<button key={v} onClick={() => update('land_road_smooth', v)} className={`flex-1 py-4 rounded-xl font-bold text-2xl ${data.land_road_smooth === v ? 'bg-sky-600 text-white shadow-md' : 'bg-slate-100 text-slate-500'}`}>{v}</button>))}</div>
+                                                {data.land_road_smooth === '是，有阻礙' && (<input type="text" className="full-width-input" value={data.land_road_desc} onChange={e => update('land_road_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
                                             </div>
                                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
                                                 <p className="text-2xl font-black text-slate-800">2. 臨路的情況</p>
@@ -1178,12 +1184,13 @@
                                                     </div>
                                                 )}
                                             </div>
+                                            {/* Land Q3 */}
                                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
-                                                <p className="text-2xl font-black text-slate-800">3. 界址與佔用</p>
+                                                <p className="text-2xl font-black text-slate-800">3. 是否有佔用/被佔用情況</p>
                                                 <div className="grid grid-cols-1 gap-6">
-                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無界樁？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_boundary" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_markers === v} onChange={() => update('land_boundary_markers', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_boundary" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_markers === '其他'} onChange={() => update('land_boundary_markers', '其他')} /><span className="font-bold text-2xl">其他</span></label></div>{data.land_boundary_markers === '其他' && (<input type="text" className="full-width-input" value={data.land_boundary_markers_desc} onChange={e => update('land_boundary_markers_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
-                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無被越界佔用？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroached" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroached === v} onChange={() => update('land_boundary_encroached', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroached" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroached === '其他'} onChange={() => update('land_boundary_encroached', '其他')} /><span className="font-bold text-2xl">其他</span></label></div>{data.land_boundary_encroached === '其他' && (<input type="text" className="full-width-input" value={data.land_boundary_encroached_desc} onChange={e => update('land_boundary_encroached_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
-                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無佔用鄰地？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['是', '否'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroaching" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroaching === v} onChange={() => update('land_boundary_encroaching', v)} /><span className="font-bold text-2xl">{v}</span></label>))}<label className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroaching" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroaching === '疑似/其他'} onChange={() => update('land_boundary_encroaching', '疑似/其他')} /><span className="font-bold text-2xl">疑似/其他</span></label></div>{data.land_boundary_encroaching === '疑似/其他' && (<input type="text" className="full-width-input" value={data.land_boundary_encroaching_desc} onChange={e => update('land_boundary_encroaching_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
+                                                    
+                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無被越界佔用？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['否', '是', '疑似/其他'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroached" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroached === v} onChange={() => update('land_boundary_encroached', v)} /><span className="font-bold text-2xl">{v}</span></label>))}</div>{data.land_boundary_encroached === '疑似/其他' && (<input type="text" className="full-width-input" value={data.land_boundary_encroached_desc} onChange={e => update('land_boundary_encroached_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
+                                                    <div className="bg-slate-50 p-4 rounded-xl"><p className="font-bold text-lg mb-3 text-slate-700">有無佔用鄰地？</p><div className="flex flex-col gap-3"><div className="flex gap-4">{['否', '是', '疑似/其他'].map(v => (<label key={v} className="flex items-center space-x-2 cursor-pointer"><input type="radio" name="land_encroaching" className="w-5 h-5 accent-sky-600" checked={data.land_boundary_encroaching === v} onChange={() => update('land_boundary_encroaching', v)} /><span className="font-bold text-2xl">{v}</span></label>))}</div>{data.land_boundary_encroaching === '疑似/其他' && (<input type="text" className="full-width-input" value={data.land_boundary_encroaching_desc} onChange={e => update('land_boundary_encroaching_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}</div></div>
                                                 </div>
                                             </div>
                                             
@@ -1204,6 +1211,7 @@
                                                                                 <button onClick={() => !data.land_q1_items.includes(i) && toggleArr('land_q1_items', i)} className={`flex-1 py-2 rounded-lg font-bold text-lg ${data.land_q1_items.includes(i) ? 'bg-sky-600 text-white' : 'bg-white border-2 border-slate-200 text-slate-500'}`}>是</button>
                                                                                 <button onClick={() => data.land_q1_items.includes(i) && toggleArr('land_q1_items', i)} className={`flex-1 py-2 rounded-lg font-bold text-lg ${!data.land_q1_items.includes(i) ? 'bg-sky-600 text-white' : 'bg-white border-2 border-slate-200 text-slate-500'}`}>否</button>
                                                                             </div>
+                                                                            {/* Always show checkbox */}
                                                                             <div className="ml-2 mt-2 bg-yellow-50 p-3 rounded-lg border border-yellow-200">
                                                                                 <CheckBox checked={data.land_q1_unregistered_hasOccupant} label="有租客或佔有人" onClick={() => update('land_q1_unregistered_hasOccupant', !data.land_q1_unregistered_hasOccupant)} />
                                                                             </div>
@@ -1225,7 +1233,7 @@
                                             </div>
                                             
                                             <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100 space-y-6">
-                                                <p className="text-2xl font-black text-slate-800">5. 公共管線與基礎設施(水電來源)</p>
+                                                <p className="text-2xl font-black text-slate-800">5. 水電或其他設施使用現況</p>
                                                 <div className="space-y-6">
                                                     <div className="bg-slate-50 p-4 rounded-xl">
                                                         <p className="font-bold text-lg mb-3 text-slate-700">電力：</p>
@@ -1238,7 +1246,7 @@
                                                                     </label>
                                                                 ))}
                                                             </div>
-                                                            {data.land_infra_electricity === '有' && (<div className="ml-2 flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-1">{['電線桿', '變電箱', '其他'].map(item => (<CheckBox key={item} checked={data.land_infra_electricity_items.includes(item)} label={item} onClick={() => toggleArr('land_infra_electricity_items', item)} size="w-6 h-6" />))}</div>)}
+                                                            {data.land_infra_electricity === '有' && (<div className="ml-2 flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-1">{['獨立電錶', '共有電錶'].map(item => (<CheckBox key={item} checked={data.land_infra_electricity_items.includes(item)} label={item} onClick={() => toggleArr('land_infra_electricity_items', item)} size="w-6 h-6" />))}</div>)}
                                                             {data.land_infra_electricity === '其他' && (<input type="text" className="full-width-input" value={data.land_infra_electricity_other} onChange={e => update('land_infra_electricity_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
                                                         </div>
                                                     </div>
@@ -1253,9 +1261,23 @@
                                                                     </label>
                                                                 ))}
                                                             </div>
-                                                            {data.land_infra_water === '有' && (<div className="ml-2 flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-1">{['自來水管線', '湖水', '井水', '灌溉溝渠', '其他'].map(item => (<CheckBox key={item} checked={data.land_infra_water_items.includes(item)} label={item} onClick={() => toggleArr('land_infra_water_items', item)} size="w-6 h-6" />))}</div>)}
+                                                            {data.land_infra_water === '有' && (<div className="ml-2 flex flex-wrap gap-4 animate-in fade-in slide-in-from-top-1">{['自來水管線', '湖水', '井水', '灌溉溝渠'].map(item => (<CheckBox key={item} checked={data.land_infra_water_items.includes(item)} label={item} onClick={() => toggleArr('land_infra_water_items', item)} size="w-6 h-6" />))}</div>)}
                                                             {data.land_infra_water === '其他' && (<input type="text" className="full-width-input" value={data.land_infra_water_other} onChange={e => update('land_infra_water_other', e.target.value)} placeholder="請說明情況" autoComplete="off" />)}
                                                         </div>
+                                                    </div>
+                                                    <div className="bg-slate-50 p-4 rounded-xl">
+                                                        <p className="font-bold text-lg mb-3 text-slate-700">其他設施：</p>
+                                                        <div className="flex gap-4">
+                                                            {['無', '有'].map(opt => (
+                                                                <label key={opt} className="flex items-center space-x-2 cursor-pointer bg-white px-4 py-2 rounded-lg border border-slate-200 hover:border-sky-400 transition-colors">
+                                                                    <input type="radio" name="land_other_fac" className="w-5 h-5 accent-sky-600" checked={data.land_infra_other_status === opt} onChange={() => update('land_infra_other_status', opt)} />
+                                                                    <span className="font-bold text-2xl">{opt}</span>
+                                                                </label>
+                                                            ))}
+                                                        </div>
+                                                        {data.land_infra_other_status === '有' && (
+                                                            <input type="text" className="full-width-input mt-2" value={data.land_infra_other_facility_desc} onChange={e => update('land_infra_other_facility_desc', e.target.value)} placeholder="請說明情況" autoComplete="off" />
+                                                        )}
                                                     </div>
                                                 </div>
                                             </div>
@@ -1623,9 +1645,9 @@
                                                 {/* Preview Logic Mapping (Same as original) */}
                                                 {type === 'land' ? (
                                                     <>
-                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.land_road_smooth === '是' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">1. 道路與進出動線是否順暢</div><div className="flex items-center gap-4"><PreviewResult checked={data.land_road_smooth === '否'} label="否，其他：" suffix={data.land_road_desc} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black">{data.land_road_smooth === '否，無異常' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">1. 道路與進出動線是否有異常</div><div className="flex items-center gap-4"><PreviewResult checked={data.land_road_smooth === '是，有阻礙'} label="是，有阻礙，說明：" suffix={data.land_road_desc} /></div></td></tr>
                                                         <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">2. 臨路的情況</div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">所有權：</span><PreviewResult checked={data.land_road_ownership === '公有'} label="公有" /><PreviewResult checked={data.land_road_ownership === '私有'} label="私有" /></div>{data.land_road_ownership && (<div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">材質：</span>{['柏油路', '水泥路', '泥巴路'].map(m => (<PreviewResult key={m} checked={data.land_road_material === m} label={m} />))}<PreviewResult checked={data.land_road_material === '其他'} label="其他說明：" suffix={data.land_road_material_other} /></div>)}<div className="flex flex-wrap gap-x-6 gap-y-1 items-center mt-1"><span className="font-bold">前方有無水溝：</span><PreviewResult checked={data.land_has_ditch === '是'} label="是" /><PreviewResult checked={data.land_has_ditch === '否'} label="否" /><PreviewResult checked={data.land_has_ditch === '其他'} label="其他說明：" suffix={data.land_has_ditch_other} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 items-center mt-1"><span className="font-bold">與道路有高低差：</span><PreviewResult checked={data.land_has_height_diff === '是'} label="是" /><PreviewResult checked={data.land_has_height_diff === '否'} label="否" /><PreviewResult checked={data.land_has_height_diff === '其他'} label="其他說明：" suffix={data.land_has_height_diff_other} /></div></td></tr>
-                                                        <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">3. 界址與佔用</div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">有無界樁：</span><PreviewResult checked={data.land_boundary_markers === '是'} label="是" /><PreviewResult checked={data.land_boundary_markers === '否'} label="否" /><PreviewResult checked={data.land_boundary_markers === '其他'} label="其他：" suffix={data.land_boundary_markers_desc} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">有無被越界佔用：</span><PreviewResult checked={data.land_boundary_encroached === '是'} label="是" /><PreviewResult checked={data.land_boundary_encroached === '否'} label="否" /><PreviewResult checked={data.land_boundary_encroached === '其他'} label="其他：" suffix={data.land_boundary_encroached_desc} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 items-center"><span className="font-bold">有無佔用鄰地：</span><PreviewResult checked={data.land_boundary_encroaching === '是'} label="是" /><PreviewResult checked={data.land_boundary_encroaching === '否'} label="否" /><PreviewResult checked={data.land_boundary_encroaching === '疑似/其他'} label="疑似/其他：" suffix={data.land_boundary_encroaching_desc} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">3. 是否有佔用/被佔用情況</div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">有無被越界佔用：</span><PreviewResult checked={data.land_boundary_encroached === '否'} label="否" /><PreviewResult checked={data.land_boundary_encroached === '是'} label="是" /><PreviewResult checked={data.land_boundary_encroached === '疑似/其他'} label="疑似/其他，說明：" suffix={data.land_boundary_encroached_desc} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 items-center"><span className="font-bold">有無佔用鄰地：</span><PreviewResult checked={data.land_boundary_encroaching === '否'} label="否" /><PreviewResult checked={data.land_boundary_encroaching === '是'} label="是" /><PreviewResult checked={data.land_boundary_encroaching === '疑似/其他'} label="疑似/其他，說明：" suffix={data.land_boundary_encroaching_desc} /></div></td></tr>
                                                         <tr><td className="w-10 text-center bg-gray-50 font-black">{data.land_q1_hasBuilding === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">4. 土地上方是否有其他物？</div><div className="warning-box">※如有請在下方勾選詳細情況</div><div className="flex flex-wrap gap-x-6 gap-y-1 mt-1">{LAND_Q1_OPTIONS.map(i => (<div key={i} className="inline-block mr-4 mb-1"><PreviewResult checked={data.land_q1_items.includes(i)} label={i} suffix={(i==="未保存登記建物" && data.land_q1_items.includes("未保存登記建物") ? ` (有租客/佔有人:${data.land_q1_unregistered_hasOccupant ? '是' : '否'})` : "") + (i==="農作物與植栽" && data.land_q1_items.includes("農作物與植栽") ? ` (待${data.land_q1_harvestMonth}月收成${data.land_q1_cropsDesc ? ', ' + data.land_q1_cropsDesc : ''})` : "") + (i==="宗教與殯葬設施" && data.land_q1_items.includes("宗教與殯葬設施") ? ` (${data.land_q1_religious_details.join(',')})` : "")} />{i === "未保存登記建物" && !data.land_q1_items.includes("未保存登記建物") && data.land_q1_unregistered_hasOccupant && (<PreviewResult checked={true} label="有租客或佔有人" />)}{i === "廢棄物" && data.land_q1_items.includes("廢棄物") && (<div className="warning-box text-[10px] mt-1 font-bold text-red-600">※有無被回填不明土壤(顏色怪異、有化學味)？若埋有毒廢棄物，需做土壤檢測</div>)}</div>))}<PreviewResult checked={data.land_q1_hasOther} label="其他：" suffix={data.land_q1_other} /></div></td></tr>
                                                     </>
                                                 ) : (
@@ -1674,7 +1696,7 @@
                                                 <tr><td className="w-10 text-center bg-gray-50 font-black">否</td><td colSpan="9" className="py-1 font-bold bg-gray-100 text-center">說明 / 檢查項目</td></tr>
                                                 {type === 'land' ? (
                                                     <>
-                                                        <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">5. 公共管線與基礎設施(水電來源)</div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">電力：</span><PreviewResult checked={data.land_infra_electricity === '無'} label="無" /><div className="inline-flex items-center"><PreviewResult checked={data.land_infra_electricity === '有'} label="有：" />{data.land_infra_electricity === '有' && (<span className="text-xs">{data.land_infra_electricity_items.join(', ')}</span>)}</div><PreviewResult checked={data.land_infra_electricity === '其他'} label="其他：" suffix={data.land_infra_electricity_other} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">水源：</span><PreviewResult checked={data.land_infra_water === '無'} label="無" /><div className="inline-flex items-center"><PreviewResult checked={data.land_infra_water === '有'} label="有：" />{data.land_infra_water === '有' && (<span className="text-xs">{data.land_infra_water_items.join(', ')}</span>)}</div><PreviewResult checked={data.land_infra_water === '其他'} label="其他：" suffix={data.land_infra_water_other} /></div></td></tr>
+                                                        <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">5. 水電或其他設施使用現況</div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">電力：</span><PreviewResult checked={data.land_infra_electricity === '無'} label="無" /><div className="inline-flex items-center"><PreviewResult checked={data.land_infra_electricity === '有'} label="有：" />{data.land_infra_electricity === '有' && (<span className="text-xs">{data.land_infra_electricity_items.join(', ')}</span>)}</div><PreviewResult checked={data.land_infra_electricity === '其他'} label="其他：" suffix={data.land_infra_electricity_other} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 mb-1 items-center"><span className="font-bold">水源：</span><PreviewResult checked={data.land_infra_water === '無'} label="無" /><div className="inline-flex items-center"><PreviewResult checked={data.land_infra_water === '有'} label="有：" />{data.land_infra_water === '有' && (<span className="text-xs">{data.land_infra_water_items.join(', ')}</span>)}</div><PreviewResult checked={data.land_infra_water === '其他'} label="其他：" suffix={data.land_infra_water_other} /></div><div className="flex flex-wrap gap-x-6 gap-y-1 items-center mt-1"><PreviewResult checked={data.land_infra_other_status === '有'} label="其他設施：有" suffix={data.land_infra_other_facility_desc ? `，${data.land_infra_other_facility_desc}` : ""} /><PreviewResult checked={data.land_infra_other_status === '無'} label="其他設施：無" /></div></td></tr>
                                                         <tr><td className="w-10 text-center bg-gray-50 font-black"></td><td colSpan="9" className="py-2 align-top-cell"><div className="flex items-center space-x-2 font-black mb-1"><span>6. 重要環境設施 (半徑300公尺內)</span><PreviewResult checked={data.q16_noFacilities} label="無重要環境設施" forceShow={true} /></div><div className="warning-box">※依內政部不動產說明書應調查</div><div className={`grid grid-cols-4 gap-x-1 gap-y-0.5 text-[9px] ${data.q16_noFacilities ? 'opacity-30' : ''}`}>{ENV_CATEGORIES.map(cat => (cat.items.map(item => <PreviewResult key={item} checked={data.q16_items.includes(item)} label={item} />)))}</div><div className={`mt-1 flex items-center ${data.q16_noFacilities ? 'opacity-30' : ''}`}><span className="text-[9px]"><PreviewResult checked={data.q16_hasOther} label="其他(現場須注意的設施)" suffix={data.q16_other} /></span><span className="border-b border-black flex-grow text-[10px] ml-2">{data.q16_other}</span></div></td></tr>
                                                         <tr><td className="w-10 text-center bg-gray-50 font-black">{data.land_q7_issue === '否' ? 'V' : ''}</td><td colSpan="9" className="py-2 align-top-cell"><div className="font-black mb-1">7. 本案或周圍是否有特別注意的事項？</div><PreviewResult checked={data.land_q7_issue === '是'} label="是，說明：" suffix={data.land_q7_desc} /></td></tr>
                                                     </>
